@@ -141,10 +141,18 @@ def compute_relevance_score(
     technique_id: str,
     technique_name: str,
     mitre_ref_domains: set = None,
+    trusted_sources: dict = None,
 ) -> float:
     """
     Score a search result 0.0–1.0 based on how likely it is to contain
     substantive content about the given ATT&CK technique.
+
+    Signals:
+      Title:       technique ID (+0.30), technique name (+0.25)
+      Description: technique ID (+0.15), technique name (+0.10)
+      URL path:    technique ID (+0.10)
+      MITRE refs:  domain cited by MITRE (+0.10)
+      Trust tier:  high-priority domain (+0.15), medium-priority (+0.05)
     """
     score = 0.0
     short_name = (
@@ -179,6 +187,17 @@ def compute_relevance_score(
     # Domain appears in MITRE's own references (strong trust signal)
     if mitre_ref_domains and domain in mitre_ref_domains:
         score += 0.10
+
+    # Domain trust tier from sources.json (high-priority vendors are inherently relevant)
+    if trusted_sources and domain:
+        for cat_config in trusted_sources.values():
+            if domain in cat_config.get('domains', []):
+                priority = cat_config.get('priority', '')
+                if priority == 'high':
+                    score += 0.15
+                elif priority == 'medium':
+                    score += 0.05
+                break
 
     return min(score, 1.0)
 

@@ -70,6 +70,8 @@ Examples:
     python trr_scraper.py T1003.006 --json                # also write JSON output
     python trr_scraper.py T1003.006 --quiet               # suppress progress output
     python trr_scraper.py T1003.006 --trr-repo tired-labs/techniques  # override TRR repo
+    python trr_scraper.py T1003.006 --min-score 0.5       # only Strong Match results
+    python trr_scraper.py T1003.006 --min-score 0.0       # include all results (no filter)
         """
     )
 
@@ -149,6 +151,18 @@ Examples:
         "--validate-links",
         action="store_true",
         help="Check link liveness via HEAD requests (works with --no-enrich for fast validation)"
+    )
+
+    parser.add_argument(
+        "--min-score",
+        type=float,
+        default=None,
+        metavar="THRESHOLD",
+        help=(
+            "Minimum relevance score (0.0–1.0) to include a result. "
+            "Default: value from config (currently 0.25). "
+            "Use 0.0 to include all results regardless of score."
+        ),
     )
 
     return parser.parse_args()
@@ -247,12 +261,13 @@ def _generate_research_checklist(
     # Phase 2
     lines.append("### Phase 2 — Technical Background")
     lines.append("")
-    ms_count = len(search_results.get('microsoft_docs', []))
-    if ms_count > 0:
-        lines.append(f"- [ ] Review the {ms_count} Microsoft documentation source(s) found below")
+    doc_count = len(search_results.get('microsoft_docs', []))
+    if doc_count > 0:
+        doc_word = "source" if doc_count == 1 else "sources"
+        lines.append(f"- [ ] Review {doc_count} vendor documentation {doc_word} found below")
     else:
-        lines.append("- [ ] Search Microsoft documentation for the underlying technology")
-    lines.append("- [ ] Identify the Windows APIs, protocols, or OS services involved")
+        lines.append("- [ ] Search vendor documentation for the underlying technology")
+    lines.append("- [ ] Identify the APIs, protocols, or OS services involved")
     lines.append("- [ ] Understand what prerequisites the attacker must satisfy")
     lines.append("- [ ] Document which security controls this technique bypasses or abuses")
     lines.append("- [ ] **Stop check:** Can you explain *why* this technique works without referencing a tool?")
@@ -279,7 +294,8 @@ def _generate_research_checklist(
     lines.append("### Phase 4 — Emulation Tests")
     lines.append("")
     if atomic_tests:
-        lines.append(f"- [x] {len(atomic_tests)} Atomic Red Team test(s) found — see section below")
+        test_word = "test" if len(atomic_tests) == 1 else "tests"
+        lines.append(f"- [x] {len(atomic_tests)} Atomic Red Team {test_word} found — see **Atomic Red Team Emulation Tests** section below")
         lines.append("- [ ] Review each test to validate your DDM covers the operations it performs")
     else:
         lines.append("- [ ] No Atomic Red Team tests found for this technique")
@@ -292,7 +308,9 @@ def _generate_research_checklist(
     lines.append("")
     github_count = len(search_results.get('github', []))
     sigma_count = len(search_results.get('sigma_rules', []))
-    lines.append(f"- [ ] Review {github_count} GitHub resource(s) and {sigma_count} Sigma rule source(s) found below")
+    g_word = "resource" if github_count == 1 else "resources"
+    s_word = "rule" if sigma_count == 1 else "rules"
+    lines.append(f"- [ ] Review {github_count} **GitHub Resources** ({g_word}) and {sigma_count} **Sigma Detection Rules** ({s_word}) — see sections below")
     lines.append("- [ ] Map each essential operation to an available telemetry source")
     lines.append("- [ ] Identify detection gaps (essential operations with no telemetry)")
     lines.append("- [ ] Write procedure narratives (not step lists — explain *why* each step works)")
@@ -317,7 +335,9 @@ def _generate_atomic_section(atomic_tests: List[Dict], technique_id: str) -> Lis
         lines.append(f"> `https://github.com/redcanaryco/atomic-red-team/tree/master/atomics/{technique_id}/`")
     else:
         github_url = atomic_tests[0].get('github_url', '')
-        lines.append(f"Found **{len(atomic_tests)} test(s)** in the Atomic Red Team repository.")
+        n_tests = len(atomic_tests)
+        tests_word = "test" if n_tests == 1 else "tests"
+        lines.append(f"Found **{n_tests} {tests_word}** in the Atomic Red Team repository.")
         if github_url:
             lines.append(f"Full file: [{technique_id}.yaml]({github_url})")
         lines.append("")
@@ -356,6 +376,8 @@ def generate_markdown_report(
     config: ConfigManager,
     no_enrich: bool = False,
     no_ddg: bool = False,
+    filtered_count: int = 0,
+    min_score: float = 0.25,
 ) -> str:
     """
     Generate a markdown report with all gathered information.
@@ -612,6 +634,13 @@ def generate_markdown_report(
 
     # Footer summary
     lines.append(f"*Total sources found: {total_sources} | High priority: {high_priority_count} | Atomic tests: {len(atomic_tests)}*")
+    if filtered_count > 0:
+        filtered_word = "result" if filtered_count == 1 else "results"
+        lines.append("")
+        lines.append(
+            f"> **Relevance filtering:** {filtered_count} {filtered_word} below the "
+            f"{min_score:.0%} threshold were excluded. Use `--min-score 0.0` to include all results."
+        )
 
     return '\n'.join(lines)
 
@@ -739,6 +768,12 @@ def main():
         print_progress(f"Step 5/5 — Skipping metadata enrichment ({reason})", always=True, quiet=quiet)
 
     # Score, sort, and filter results by relevance
+    filtered_count = 0
+    min_score = (
+        args.min_score
+        if args.min_score is not None
+        else config.search_settings.get('min_relevance_score', 0.25)
+    )
     if search_results:
         mitre_ref_domains = set()
         if technique_info:
@@ -747,12 +782,13 @@ def main():
                 if d:
                     mitre_ref_domains.add(d)
 
-        min_score = config.search_settings.get('min_relevance_score', 0.10)
-
+        pre_filter_total = 0
         for category, results in search_results.items():
+            pre_filter_total += len(results)
             for r in results:
                 r['relevance_score'] = compute_relevance_score(
-                    r, technique_id, technique_name, mitre_ref_domains
+                    r, technique_id, technique_name, mitre_ref_domains,
+                    trusted_sources=config.trusted_sources,
                 )
             # Sort by relevance score descending, then filter
             results.sort(key=lambda r: r.get('relevance_score', 0), reverse=True)
@@ -761,8 +797,13 @@ def main():
             ]
 
         filtered_total = sum(len(r) for r in search_results.values())
+        filtered_count = pre_filter_total - filtered_total
         if not quiet:
-            print_progress(f"         {filtered_total} sources passed relevance filtering (min score: {min_score})", always=True, quiet=quiet)
+            print_progress(
+                f"         {filtered_total} sources passed relevance filtering "
+                f"(min score: {min_score:.0%}, {filtered_count} excluded)",
+                always=True, quiet=quiet,
+            )
 
     # Generate report
     report = generate_markdown_report(
@@ -775,6 +816,8 @@ def main():
         config=config,
         no_enrich=args.no_enrich,
         no_ddg=args.no_ddg,
+        filtered_count=filtered_count,
+        min_score=min_score,
     )
 
     # Determine output filename suffix
