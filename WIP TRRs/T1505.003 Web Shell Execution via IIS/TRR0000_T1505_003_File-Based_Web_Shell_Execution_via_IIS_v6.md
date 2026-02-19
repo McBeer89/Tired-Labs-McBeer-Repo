@@ -433,6 +433,55 @@ handler mappings rather than the server defaults. The post-execution branch
 between process spawn and .NET API calls remains the same, as post-execution
 behavior depends on the web shell's code, not on how the handler was configured.
 
+## Detection Considerations
+
+The DDM for this technique does not have a single convergence point with strong
+telemetry that covers all three procedures. The shared pipeline operations
+(Send HTTP Request → Route Request → Match Handler → Execute Code) either lack
+server-side telemetry entirely or present severe classification challenges. As
+a result, detection requires multiple telemetry sources that collectively cover
+the technique's attack surface. The following matrix summarizes which telemetry
+sources provide coverage for each procedure:
+
+### Procedure Coverage Matrix
+
+|                  | Process Spawn (Sysmon 1 / Event 4688) | File Creation (Sysmon 11) | web.config Monitoring (Sysmon 11 / FIM) | ASPX Compilation Artifacts (Sysmon 11) | IIS W3C Logs |
+|------------------|:-----:|:-----:|:-----:|:-----:|:-----:|
+| **TRR0000.WIN.A** | ✅    | ⚠️*   | —     | ⚠️**  | ⚠️*** |
+| **TRR0000.WIN.B** | —     | ⚠️*   | —     | ⚠️**  | ⚠️*** |
+| **TRR0000.WIN.C** | ⚠️†   | ⚠️††  | ✅    | ⚠️**  | ⚠️*** |
+
+*\* New file creation only; Sysmon 11 does not fire on modification of existing files.*
+*\*\* `.aspx` files only; classic ASP (`.asp`) does not produce compilation artifacts.*
+*\*\*\* Full identification but weak classification; web shell requests are difficult to distinguish from legitimate traffic.*
+*† Only when the web shell spawns a child process.*
+*†† Custom handler mapping variant only; not the inline handler variant.*
+
+The strongest detection signal in the DDM is the parent-child process
+relationship between `w3wp.exe` and command interpreters or system utilities
+(Procedure A). This relationship is rarely legitimate and provides high-fidelity
+alerting. However, it provides no coverage for Procedure B (in-process
+execution), which by definition never spawns a child process.
+
+### Known Blind Spots
+
+**Procedure B via file modification** represents the lowest-visibility scenario
+in the DDM. If an attacker injects web shell code into an existing legitimate
+`.aspx` page and the shell operates exclusively through .NET APIs, then: process
+spawn detection does not apply (no child process), Sysmon 11 does not fire (file
+modification, not creation), no web.config is involved, and compilation artifacts
+may not be distinguishing (recompilation of an existing page is not inherently
+suspicious). The primary residual detection options are File Integrity Monitoring,
+SACL auditing (Event 4663) on web root directories, and IIS log analysis — all
+of which require environment-specific configuration or manual review.
+
+**Procedure C with Application Initialization** presents a partial blind spot
+for IIS log analysis. When the attacker configures Application Initialization to
+auto-trigger the web shell on app pool recycle, the triggering request originates
+internally from IIS rather than from the attacker, and may be difficult to
+distinguish from legitimate warmup activity. However, web.config monitoring
+remains fully effective for this variant.
+
 ## Available Emulation Tests
 
 | ID             | Link                |
@@ -454,6 +503,9 @@ behavior depends on the web shell's code, not on how the handler was configured.
 - [IHttpHandler Interface - Microsoft Learn]
 - [Detect and Prevent Web Shell Malware - NSA/CISA]
 - [Web Shell Attacks Continue to Rise - Microsoft Security Blog]
+- [Ghost in the Shell: Investigating Web Shell Attacks - Microsoft Security Blog]
+- [Web Shell Detection: Script Process Child of Common Web Processes - Elastic Security]
+- [Mo' Shells Mo' Problems: Deep Panda Web Shells - CrowdStrike]
 - [T1505.003 - MITRE ATT&CK]
 
 [T1505.003]: https://attack.mitre.org/techniques/T1505/003/
@@ -468,6 +520,9 @@ behavior depends on the web shell's code, not on how the handler was configured.
 [IHttpHandler Interface - Microsoft Learn]: https://learn.microsoft.com/en-us/dotnet/api/system.web.ihttphandler
 [Detect and Prevent Web Shell Malware - NSA/CISA]: https://media.defense.gov/2020/Jun/09/2002313081/-1/-1/0/CSI-DETECT-AND-PREVENT-WEB-SHELL-MALWARE-20200422.PDF
 [Web Shell Attacks Continue to Rise - Microsoft Security Blog]: https://www.microsoft.com/en-us/security/blog/2021/02/11/web-shell-attacks-continue-to-rise/
+[Ghost in the Shell: Investigating Web Shell Attacks - Microsoft Security Blog]: https://www.microsoft.com/en-us/security/blog/2020/02/04/ghost-in-the-shell-investigating-web-shell-attacks/
+[Web Shell Detection: Script Process Child of Common Web Processes - Elastic Security]: https://www.elastic.co/docs/reference/security/prebuilt-rules/rules/windows/persistence_webshell_detection
+[Mo' Shells Mo' Problems: Deep Panda Web Shells - CrowdStrike]: https://www.crowdstrike.com/en-us/blog/mo-shells-mo-problems-deep-panda-web-shells/
 [T1505.003 - MITRE ATT&CK]: https://attack.mitre.org/techniques/T1505/003/
 [Atomic Test T1505.003-1]: https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1505.003/T1505.003.md#atomic-test-1---deploy-asp-webshell
 [Atomic Test T1505.003-2]: https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1505.003/T1505.003.md#atomic-test-2---deploy-aspx-webshell
