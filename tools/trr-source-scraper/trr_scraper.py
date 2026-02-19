@@ -263,8 +263,7 @@ def _generate_research_checklist(
     lines.append("")
     doc_count = len(search_results.get('microsoft_docs', []))
     if doc_count > 0:
-        doc_word = "source" if doc_count == 1 else "sources"
-        lines.append(f"- [ ] Review {doc_count} vendor documentation {doc_word} found below")
+        lines.append("- [ ] Review vendor documentation sources found below")
     else:
         lines.append("- [ ] Search vendor documentation for the underlying technology")
     lines.append("- [ ] Identify the APIs, protocols, or OS services involved")
@@ -306,11 +305,7 @@ def _generate_research_checklist(
     # Phase 5
     lines.append("### Phase 5 — Detection & TRR Documentation")
     lines.append("")
-    github_count = len(search_results.get('github', []))
-    sigma_count = len(search_results.get('sigma_rules', []))
-    g_word = "resource" if github_count == 1 else "resources"
-    s_word = "rule" if sigma_count == 1 else "rules"
-    lines.append(f"- [ ] Review {github_count} **GitHub Resources** ({g_word}) and {sigma_count} **Sigma Detection Rules** ({s_word}) — see sections below")
+    lines.append("- [ ] Review **GitHub Resources** and **Sigma Detection Rules** — see sections below")
     lines.append("- [ ] Map each essential operation to an available telemetry source")
     lines.append("- [ ] Identify detection gaps (essential operations with no telemetry)")
     lines.append("- [ ] Write procedure narratives (not step lists — explain *why* each step works)")
