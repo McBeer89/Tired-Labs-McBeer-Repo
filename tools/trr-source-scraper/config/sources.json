@@ -1,0 +1,92 @@
+{
+  "trusted_sources": {
+    "security_research": {
+      "priority": "high",
+      "domains": [
+        "specterops.io",
+        "redcanary.com",
+        "crowdstrike.com",
+        "elastic.co",
+        "microsoft.com",
+        "learn.microsoft.com",
+        "techcommunity.microsoft.com",
+        "paloaltonetworks.com",
+        "unit42.paloaltonetworks.com",
+        "cisco.com",
+        "talosintelligence.com",
+        "securelist.com",
+        "virustotal.com",
+        "mitre.org",
+        "attack.mitre.org",
+        "avfisher.win",
+        "cyberark.com",
+        "trimarcsecurity.com",
+        "pentestpartners.com",
+        "nccgroup.com",
+        "contextis.com",
+        "mandiant.com",
+        "fireeye.com",
+        "recordedfuture.com",
+        "proofpoint.com"
+      ],
+      "search_prefix": "",
+      "search_suffix": "security research analysis detection"
+    },
+    "microsoft_docs": {
+      "priority": "high",
+      "domains": [
+        "learn.microsoft.com",
+        "docs.microsoft.com",
+        "msdn.microsoft.com",
+        "technet.microsoft.com"
+      ],
+      "search_prefix": "",
+      "search_suffix": "documentation"
+    },
+    "conferences": {
+      "priority": "medium",
+      "domains": [
+        "blackhat.com",
+        "defcon.org",
+        "media.defcon.org",
+        "bsides.org",
+        "youtube.com"
+      ],
+      "search_prefix": "",
+      "search_suffix": "presentation talk slides"
+    },
+    "github": {
+      "priority": "medium",
+      "domains": [
+        "github.com"
+      ],
+      "search_prefix": "",
+      "search_suffix": "POC exploit detection atomic"
+    },
+    "academic": {
+      "priority": "low",
+      "domains": [
+        "arxiv.org",
+        "usenix.org",
+        "acm.org",
+        "ieeexplore.ieee.org",
+        "researchgate.net"
+      ],
+      "search_prefix": "",
+      "search_suffix": "research paper"
+    }
+  },
+  "search_settings": {
+    "max_results_per_category": 10,
+    "delay_between_requests": 2,
+    "timeout": 15,
+    "max_retries": 3,
+    "user_agent": "TRR-Source-Scraper/1.0 (Educational Research Tool)"
+  },
+  "output_settings": {
+    "default_output_dir": "output",
+    "include_excerpts": true,
+    "excerpt_length": 200,
+    "include_dates": true
+  }
+}

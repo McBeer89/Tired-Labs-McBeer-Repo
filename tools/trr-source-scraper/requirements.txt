@@ -1,0 +1,11 @@
+# TRR Source Scraper Dependencies
+
+# HTTP requests
+requests>=2.28.0
+
+# HTML parsing
+beautifulsoup4>=4.11.0
+lxml>=4.9.0
+
+# Optional: progress bars (uncomment if desired)
+# tqdm>=4.64.0
