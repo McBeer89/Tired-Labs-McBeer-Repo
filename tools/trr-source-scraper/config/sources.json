@@ -7,27 +7,26 @@
         "redcanary.com",
         "crowdstrike.com",
         "elastic.co",
-        "microsoft.com",
-        "learn.microsoft.com",
-        "techcommunity.microsoft.com",
         "paloaltonetworks.com",
         "unit42.paloaltonetworks.com",
         "cisco.com",
         "talosintelligence.com",
         "securelist.com",
-        "virustotal.com",
-        "mitre.org",
-        "attack.mitre.org",
-        "avfisher.win",
         "cyberark.com",
         "trimarcsecurity.com",
-        "pentestpartners.com",
         "nccgroup.com",
-        "contextis.com",
         "mandiant.com",
         "fireeye.com",
         "recordedfuture.com",
-        "proofpoint.com"
+        "proofpoint.com",
+        "thedfirreport.com",
+        "huntress.com",
+        "sans.org",
+        "blog.malwarebytes.com",
+        "securityintelligence.com",
+        "sentinelone.com",
+        "blog.talosintelligence.com",
+        "research.nccgroup.com"
       ],
       "search_prefix": "",
       "search_suffix": "security research analysis detection"
@@ -38,7 +37,8 @@
         "learn.microsoft.com",
         "docs.microsoft.com",
         "msdn.microsoft.com",
-        "technet.microsoft.com"
+        "technet.microsoft.com",
+        "techcommunity.microsoft.com"
       ],
       "search_prefix": "",
       "search_suffix": "documentation"
@@ -61,7 +61,25 @@
         "github.com"
       ],
       "search_prefix": "",
-      "search_suffix": "POC exploit detection atomic"
+      "search_suffix": "detection atomic sigma POC"
+    },
+    "sigma_rules": {
+      "priority": "medium",
+      "domains": [
+        "github.com"
+      ],
+      "search_prefix": "",
+      "search_suffix": "site:github.com/SigmaHQ/sigma detection rule"
+    },
+    "lolbas_gtfobins": {
+      "priority": "medium",
+      "domains": [
+        "lolbas-project.github.io",
+        "gtfobins.github.io",
+        "loflcab.azurewebsites.net"
+      ],
+      "search_prefix": "",
+      "search_suffix": "living off the land"
     },
     "academic": {
       "priority": "low",

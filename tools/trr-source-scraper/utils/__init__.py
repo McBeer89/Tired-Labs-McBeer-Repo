@@ -2,7 +2,7 @@
 Utility modules for the TRR Source Scraper.
 """
 
-from trr_source_scraper.utils.helpers import (
+from utils.helpers import (
     RateLimiter,
     ConfigManager,
     validate_technique_id,

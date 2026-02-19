@@ -7,7 +7,7 @@ from typing import Dict, Optional, List
 from bs4 import BeautifulSoup
 import requests
 
-from trr_source_scraper.utils import (
+from utils import (
     RateLimiter,
     clean_text,
     create_session,
@@ -109,72 +109,121 @@ class MitreAttackScraper:
     
     def _extract_description(self, soup: BeautifulSoup) -> str:
         """Extract technique description."""
-        # Find the main description div
+        # Current ATT&CK site uses description-body div
+        desc_div = soup.find('div', class_='description-body')
+        if desc_div:
+            paragraphs = desc_div.find_all('p')
+            if paragraphs:
+                return clean_text(' '.join(p.get_text() for p in paragraphs))
+            return clean_text(desc_div.get_text())
+
+        # Older fallback
         desc_div = soup.find('div', class_='description')
         if desc_div:
             return clean_text(desc_div.get_text())
-        
-        # Try to find first paragraph after heading
+
+        # Last resort: first long paragraph
         for p in soup.find_all('p'):
             text = p.get_text(strip=True)
-            if len(text) > 100:  # Likely the description
+            if len(text) > 100:
                 return clean_text(text)
-        
+
         return ""
     
     def _extract_tactics(self, soup: BeautifulSoup) -> List[str]:
         """Extract associated tactics."""
         tactics = []
-        
-        # Look for tactics in the card/table
-        for card in soup.find_all('div', class_='card-body'):
-            for a in card.find_all('a'):
-                href = a.get('href', '')
-                if '/tactics/' in href:
-                    tactics.append(clean_text(a.get_text()))
-        
-        # Also check for tactic badges
-        for badge in soup.find_all(['span', 'div'], class_=lambda x: x and 'tactic' in x.lower() if x else False):
-            text = clean_text(badge.get_text())
-            if text and text not in tactics:
-                tactics.append(text)
-        
-        return list(set(tactics))
+
+        # Current ATT&CK site: card-data divs with card-title spans
+        for card_data in soup.find_all('div', class_='card-data'):
+            label = card_data.find('span', class_='h5')
+            if label and 'tactic' in label.get_text().lower():
+                for a in card_data.find_all('a'):
+                    href = a.get('href', '')
+                    if '/tactics/' in href:
+                        text = clean_text(a.get_text())
+                        if text:
+                            tactics.append(text)
+
+        # Fallback: any link to a tactics page
+        if not tactics:
+            for card in soup.find_all('div', class_='card-body'):
+                for a in card.find_all('a'):
+                    href = a.get('href', '')
+                    if '/tactics/' in href:
+                        text = clean_text(a.get_text())
+                        if text and text not in tactics:
+                            tactics.append(text)
+
+        return list(dict.fromkeys(tactics))  # deduplicate, preserve order
     
     def _extract_platforms(self, soup: BeautifulSoup) -> List[str]:
         """Extract affected platforms."""
         platforms = []
-        
-        # Look in card data
-        for card in soup.find_all('div', class_='card-body'):
-            text = card.get_text()
-            if 'Platform' in text:
-                # Parse platforms from text
-                known_platforms = ['Windows', 'Linux', 'macOS', 'Azure', 'AWS', 'GCP', 
-                                   'SaaS', 'Office 365', 'Network', 'Containers', 'IaaS']
-                for platform in known_platforms:
-                    if platform in text:
-                        platforms.append(platform)
-        
-        return list(set(platforms))
+
+        # Current ATT&CK site: card-data divs with "Platforms" label
+        for card_data in soup.find_all('div', class_='card-data'):
+            label = card_data.find('span', class_='h5')
+            if label and 'platform' in label.get_text().lower():
+                # Platforms are plain text after the label, often separated by commas
+                text = card_data.get_text(separator=' ')
+                # Remove the label text itself
+                label_text = label.get_text()
+                text = text.replace(label_text, '').strip().strip(':').strip()
+                # Strip non-ASCII characters (page uses Unicode icons like ⓘ)
+                text = text.encode('ascii', 'ignore').decode('ascii')
+                for part in re.split(r'[,\n]', text):
+                    part = clean_text(part)
+                    if part:
+                        platforms.append(part)
+
+        # Fallback: hardcoded list scan
+        if not platforms:
+            known_platforms = ['Windows', 'Linux', 'macOS', 'Azure', 'AWS', 'GCP',
+                               'SaaS', 'Office 365', 'Network', 'Containers', 'IaaS',
+                               'PRE', 'Google Workspace']
+            for card in soup.find_all('div', class_='card-body'):
+                text = card.get_text()
+                if 'Platform' in text:
+                    for platform in known_platforms:
+                        if platform in text:
+                            platforms.append(platform)
+
+        return list(dict.fromkeys(platforms))
     
     def _extract_data_sources(self, soup: BeautifulSoup) -> List[str]:
         """Extract data sources for detection."""
         data_sources = []
-        
-        # Look for data sources section
-        for heading in soup.find_all(['h2', 'h3']):
-            if 'data source' in heading.get_text().lower():
-                # Get the next sibling content
-                sibling = heading.find_next_sibling()
-                while sibling and sibling.name in ['p', 'ul', 'div']:
-                    for a in sibling.find_all('a'):
-                        text = clean_text(a.get_text())
-                        if text:
-                            data_sources.append(text)
-                    sibling = sibling.find_next_sibling()
-        
-        return list(set(data_sources))
+
+        # Current ATT&CK site: card-data div with "Data Sources" label
+        for card_data in soup.find_all('div', class_='card-data'):
+            label = card_data.find('span', class_='h5')
+            if label and 'data source' in label.get_text().lower():
+                for a in card_data.find_all('a'):
+                    text = clean_text(a.get_text())
+                    if text:
+                        data_sources.append(text)
+                # Also extract plain text if no links
+                if not data_sources:
+                    raw = card_data.get_text(separator=',').replace(label.get_text(), '')
+                    for part in raw.split(','):
+                        part = clean_text(part)
+                        if part:
+                            data_sources.append(part)
+
+        # Fallback: heading-based search
+        if not data_sources:
+            for heading in soup.find_all(['h2', 'h3']):
+                if 'data source' in heading.get_text().lower():
+                    sibling = heading.find_next_sibling()
+                    while sibling and sibling.name in ['p', 'ul', 'div']:
+                        for a in sibling.find_all('a'):
+                            text = clean_text(a.get_text())
+                            if text:
+                                data_sources.append(text)
+                        sibling = sibling.find_next_sibling()
+
+        return list(dict.fromkeys(data_sources))
     
     def _extract_defense_bypassed(self, soup: BeautifulSoup) -> List[str]:
         """Extract defenses bypassed by this technique."""
@@ -209,14 +258,26 @@ class MitreAttackScraper:
     def _extract_effective_permissions(self, soup: BeautifulSoup) -> List[str]:
         """Extract effective permissions gained."""
         permissions = []
-        
-        for card in soup.find_all('div', class_='card-body'):
-            text = card.get_text()
-            if 'Effective Permission' in text:
-                # Parse from the text
-                pass
-        
-        return permissions
+        known_perms = ['User', 'Administrator', 'SYSTEM', 'root', 'rooted']
+
+        for card_data in soup.find_all('div', class_='card-data'):
+            label = card_data.find('span', class_='h5')
+            if label and 'effective permission' in label.get_text().lower():
+                text = card_data.get_text()
+                for perm in known_perms:
+                    if perm in text:
+                        permissions.append(perm)
+
+        # Fallback: scan card-body
+        if not permissions:
+            for card in soup.find_all('div', class_='card-body'):
+                text = card.get_text()
+                if 'Effective Permission' in text:
+                    for perm in known_perms:
+                        if perm in text:
+                            permissions.append(perm)
+
+        return list(dict.fromkeys(permissions))
     
     def _extract_references(self, soup: BeautifulSoup) -> List[Dict]:
         """Extract external references."""

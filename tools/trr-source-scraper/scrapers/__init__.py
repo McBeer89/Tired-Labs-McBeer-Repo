@@ -2,10 +2,11 @@
 Scraper modules for the TRR Source Scraper.
 """
 
-from trr_source_scraper.scrapers.mitre_attack import MitreAttackScraper, fetch_mitre_technique
-from trr_source_scraper.scrapers.duckduckgo import DuckDuckGoScraper, search_technique_sources
-from trr_source_scraper.scrapers.existing_trr import ExistingTRRScanner, scan_for_existing_trrs
-from trr_source_scraper.scrapers.site_fetcher import SiteFetcher, enrich_search_results
+from scrapers.mitre_attack import MitreAttackScraper, fetch_mitre_technique
+from scrapers.duckduckgo import DuckDuckGoScraper, search_technique_sources
+from scrapers.existing_trr import ExistingTRRScanner, scan_for_existing_trrs
+from scrapers.site_fetcher import SiteFetcher, enrich_search_results
+from scrapers.atomic_red_team import fetch_atomic_tests
 
 __all__ = [
     'MitreAttackScraper',
@@ -16,4 +17,5 @@ __all__ = [
     'scan_for_existing_trrs',
     'SiteFetcher',
     'enrich_search_results',
+    'fetch_atomic_tests',
 ]

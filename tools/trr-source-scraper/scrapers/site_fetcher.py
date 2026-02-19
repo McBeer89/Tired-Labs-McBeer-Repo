@@ -6,7 +6,7 @@ from typing import Dict, Optional, List
 from bs4 import BeautifulSoup
 import requests
 
-from trr_source_scraper.utils import (
+from utils import (
     RateLimiter,
     clean_text,
     create_session,
