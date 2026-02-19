@@ -42,5 +42,6 @@ Thumbs.db
 # Tool backups
 *-backup-*/
 
-# Scraper cache
+# Scraper cache and generated output
 tools/trr-source-scraper/output/.cache/
+tools/trr-source-scraper/output/*.md
