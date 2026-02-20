@@ -6,7 +6,7 @@ import time
 import re
 import json
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 from datetime import datetime
 from typing import Optional, Dict, List, Any
 import requests
@@ -403,8 +403,8 @@ def deduplicate_results(
 
     def _github_file_key(url: str) -> Optional[str]:
         """Extract the file path portion from a GitHub URL, ignoring org/repo."""
-        # Strip anchors and query strings before matching
-        clean_url = url.split('#')[0].split('?')[0]
+        # Strip anchors and query strings, then decode percent-encoded chars
+        clean_url = unquote(url.split('#')[0].split('?')[0])
         # Standard blob/tree URLs
         m = re.search(r'github\.com/[^/]+/[^/]+/(?:blob|tree)/[^/]+/(.+)', clean_url)
         if m:
@@ -469,6 +469,49 @@ def deduplicate_results(
                     print(f"  [dedup] Removed fork: {url} (kept {existing_r['url']})")
         else:
             github_file_map[fkey] = (category, r)
+
+    # -- Pass 1b: GitHub fork dedup by technique directory -----------------
+    # Catches forks where the same technique directory exists but with
+    # different file names/extensions (e.g., T1505.003.md vs .yaml)
+
+    def _github_technique_dir_key(url: str) -> Optional[str]:
+        """Return the technique-directory portion of a GitHub file path."""
+        fkey = _github_file_key(url)
+        if not fkey:
+            return None
+        m = re.search(r'((?:^|.*)T\d{4}(?:\.\d{3})?)(?:/|$)', fkey)
+        if m:
+            return m.group(1)
+        return None
+
+    github_dir_map: Dict[str, tuple] = {}
+
+    for category, r in all_items:
+        url = r.get('url', '')
+        if url in removed_urls:
+            continue
+        dkey = _github_technique_dir_key(url)
+        if not dkey:
+            continue
+        if dkey in github_dir_map:
+            existing_cat, existing_r = github_dir_map[dkey]
+            existing_org = _github_org(existing_r.get('url', ''))
+            new_org = _github_org(url)
+            # Only dedup across different orgs (same org may have
+            # legitimately different files in the same technique dir)
+            if new_org == existing_org:
+                continue
+            if _github_org_priority(new_org) < _github_org_priority(existing_org):
+                removed_urls.add(existing_r['url'])
+                github_dir_map[dkey] = (category, r)
+                if verbose:
+                    print(f"  [dedup] Removed fork (dir match): {existing_r['url']} (kept {url})")
+            else:
+                removed_urls.add(url)
+                if verbose:
+                    print(f"  [dedup] Removed fork (dir match): {url} (kept {existing_r['url']})")
+        else:
+            github_dir_map[dkey] = (category, r)
 
     # -- Pass 2: Academic paper dedup (arXiv + IEEE) ----------------------
 

@@ -1116,6 +1116,10 @@ def main():
                     r, technique_id, technique_name, mitre_ref_domains,
                     trusted_sources=config.trusted_sources,
                 )
+                # Results from category-scoped queries (e.g. site:github.com/SigmaHQ)
+                # are already pre-filtered to be relevant; give them a boost
+                if r.get('_scoped_query'):
+                    r['relevance_score'] = min(r['relevance_score'] + 0.20, 1.0)
             # Sort by relevance score descending, then filter
             results.sort(key=lambda r: r.get('relevance_score', 0), reverse=True)
             search_results[category] = [

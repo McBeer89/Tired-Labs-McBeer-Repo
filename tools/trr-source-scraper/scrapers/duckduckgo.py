@@ -249,8 +249,10 @@ def _build_queries(
     """
     Build search queries tailored to each category's purpose.
 
-    Returns 2-3 queries per category, using exact-phrase quoting on the
-    technique's short name to force DuckDuckGo to match precisely.
+    Returns 2-3 queries per category.  Category-specific queries come first
+    (most targeted), followed by shared common queries.  Uses exact-phrase
+    quoting on the technique's short name to force DuckDuckGo to match
+    precisely.
     """
     # For sub-techniques like "OS Credential Dumping: DCSync", extract "DCSync"
     short_name = (
@@ -275,7 +277,7 @@ def _build_queries(
         'academic': [f'"{short_name}" detection research paper{extra}'],
     }
 
-    return common + category_specific.get(category_name, [])
+    return category_specific.get(category_name, []) + common
 
 
 def search_technique_sources(
@@ -375,7 +377,7 @@ def search_technique_sources(
             batch = cat_tier2[batch_start:batch_start + 5]
             if not batch:
                 # No tier-2 domains; still run category queries without site filter
-                for query in queries[:2]:
+                for query in queries[:3]:
                     tier2_results = scraper.search(query, max_results=max_per_category)
                     for r in tier2_results:
                         r['_search_tier'] = 'tier2'
@@ -383,12 +385,20 @@ def search_technique_sources(
                     tier2_query_count += 1
                 break
 
-            for query in queries[:2]:
-                tier2_results = scraper.search_with_site_filter(
-                    query, batch, max_per_category
-                )
+            for query in queries[:3]:
+                # If the query already has a site: scope (e.g. sigma_rules),
+                # run it directly so the built-in scope isn't overridden
+                scoped = 'site:' in query
+                if scoped:
+                    tier2_results = scraper.search(query, max_results=max_per_category)
+                else:
+                    tier2_results = scraper.search_with_site_filter(
+                        query, batch, max_per_category
+                    )
                 for r in tier2_results:
                     r['_search_tier'] = 'tier2'
+                    if scoped:
+                        r['_scoped_query'] = True
                 category_results.extend(tier2_results)
                 tier2_query_count += 1
 
@@ -413,9 +423,12 @@ def search_technique_sources(
         results[category_name] = unique_results[:max_per_category]
 
         if verbose:
-            t1_count = sum(1 for r in unique_results[:max_per_category] if r.get('_search_tier') == 'tier1')
-            t2_count = len(unique_results[:max_per_category]) - t1_count
-            print(f"  [{category_name}] {t1_count} tier-1 + {t2_count} tier-2 results")
+            final = unique_results[:max_per_category]
+            t1_count = sum(1 for r in final if r.get('_search_tier') == 'tier1')
+            t2_count = len(final) - t1_count
+            raw_total = len(category_results)
+            dedup_note = f" (deduped to {len(final)})" if raw_total != len(final) else ""
+            print(f"  {category_name}: {t1_count} tier-1 + {t2_count} tier-2 = {raw_total} results{dedup_note}")
 
     if verbose:
         print(f"  [search] Total queries: {tier1_query_count} focused + {tier2_query_count} sweep")
