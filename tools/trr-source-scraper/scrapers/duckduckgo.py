@@ -288,9 +288,13 @@ def search_technique_sources(
     verbose: bool = False,
     mitre_refs: Optional[List[Dict]] = None,
     use_cache: bool = True,
+    tier1_domains: Optional[List[str]] = None,
 ) -> Dict[str, List[Dict]]:
     """
-    Search for sources across multiple categories.
+    Search for sources across multiple categories using a two-tier strategy.
+
+    Tier 1: Individual targeted queries for high-value domains (max 2 results each).
+    Tier 2: Batched OR queries for remaining domains (groups of 5).
 
     Args:
         technique_id: MITRE ATT&CK technique ID
@@ -303,14 +307,23 @@ def search_technique_sources(
         mitre_refs: References extracted from the MITRE ATT&CK page (used
                     to boost domains that MITRE itself cites)
         use_cache: Whether to use cached search results (1-day TTL)
+        tier1_domains: List of high-value domains that get individual queries
 
     Returns:
         Dictionary mapping category names to lists of results
     """
     scraper = DuckDuckGoScraper(user_agent=user_agent, verbose=verbose, use_cache=use_cache)
     results = {}
+    tier1_set = set(tier1_domains or [])
 
     extra = f" {extra_terms.strip()}" if extra_terms and extra_terms.strip() else ""
+
+    # Extract short name for tier-1 queries
+    short_name = (
+        technique_name.split(":")[-1].strip()
+        if ":" in technique_name
+        else technique_name
+    )
 
     # Extract domains from MITRE references — these are known to have
     # technique-relevant content and can supplement the configured domain list
@@ -325,34 +338,64 @@ def search_technique_sources(
 
     # Cross-category dedup: each URL appears in at most one category
     global_seen_urls = set()
+    tier1_query_count = 0
+    tier2_query_count = 0
 
     for category_name, category_config in categories.items():
         category_results = []
         domains = category_config.get('domains', [])
-        search_suffix = category_config.get('search_suffix', '')
 
-        # Merge MITRE-cited domains into the domain list for this category
-        # (only domains not already present, limited to keep queries short)
-        combined_domains = list(domains)
+        # Split domains into tier-1 (individual queries) and tier-2 (batched)
+        cat_tier1 = [d for d in domains if d in tier1_set]
+        cat_tier2 = [d for d in domains if d not in tier1_set]
+
+        # Add MITRE-cited domains to tier-2 pool
         for mrd in mitre_ref_domains:
-            if mrd not in combined_domains:
-                combined_domains.append(mrd)
+            if mrd not in cat_tier1 and mrd not in cat_tier2:
+                cat_tier2.append(mrd)
 
+        # --- Tier 1: Individual queries per high-value domain ---
+        for domain in cat_tier1:
+            query = f'"{short_name}" site:{domain}'
+            # Short names (< 4 chars) are too broad; add technique_id for precision
+            if len(short_name) < 4:
+                query = f'"{short_name}" {technique_id} site:{domain}'
+            query += extra
+
+            tier1_results = scraper.search(query, max_results=2)
+            for r in tier1_results:
+                r['_search_tier'] = 'tier1'
+            category_results.extend(tier1_results)
+            tier1_query_count += 1
+
+        # --- Tier 2: Batched OR queries (groups of 5, no search_suffix) ---
         queries = _build_queries(technique_id, technique_name, category_name, extra)
 
-        # Use top 2 queries for this category
-        for query in queries[:2]:
-            full_query = f"{query} {search_suffix}".strip()
+        for batch_start in range(0, max(len(cat_tier2), 1), 5):
+            batch = cat_tier2[batch_start:batch_start + 5]
+            if not batch:
+                # No tier-2 domains; still run category queries without site filter
+                for query in queries[:2]:
+                    tier2_results = scraper.search(query, max_results=max_per_category)
+                    for r in tier2_results:
+                        r['_search_tier'] = 'tier2'
+                    category_results.extend(tier2_results)
+                    tier2_query_count += 1
+                break
 
-            search_results = scraper.search_with_site_filter(
-                full_query,
-                combined_domains,
-                max_per_category
-            )
-
-            category_results.extend(search_results)
+            for query in queries[:2]:
+                tier2_results = scraper.search_with_site_filter(
+                    query, batch, max_per_category
+                )
+                for r in tier2_results:
+                    r['_search_tier'] = 'tier2'
+                category_results.extend(tier2_results)
+                tier2_query_count += 1
 
         # Deduplicate within + across categories, filter landing pages
+        # Sort tier-1 results first within the category
+        category_results.sort(key=lambda r: 0 if r.get('_search_tier') == 'tier1' else 1)
+
         seen = set()
         unique_results = []
         for r in category_results:
@@ -368,5 +411,13 @@ def search_technique_sources(
 
         global_seen_urls.update(seen)
         results[category_name] = unique_results[:max_per_category]
+
+        if verbose:
+            t1_count = sum(1 for r in unique_results[:max_per_category] if r.get('_search_tier') == 'tier1')
+            t2_count = len(unique_results[:max_per_category]) - t1_count
+            print(f"  [{category_name}] {t1_count} tier-1 + {t2_count} tier-2 results")
+
+    if verbose:
+        print(f"  [search] Total queries: {tier1_query_count} focused + {tier2_query_count} sweep")
 
     return results

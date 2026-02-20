@@ -74,7 +74,27 @@ def fetch_atomic_tests(technique_id: str, user_agent: str = "") -> List[Dict]:
     for test in data.get('atomic_tests', []):
         platforms = test.get('supported_platforms', [])
         executor = test.get('executor', {})
-        executor_name = executor.get('name', 'unknown') if isinstance(executor, dict) else str(executor)
+
+        command = ''
+        cleanup_command = ''
+        if isinstance(executor, dict):
+            executor_name = executor.get('name', 'unknown')
+            command = executor.get('command', '').strip()
+            cleanup_command = executor.get('cleanup_command', '').strip()
+        else:
+            executor_name = str(executor)
+
+        # Parse input arguments into a flat list of dicts
+        input_arguments = []
+        raw_args = test.get('input_arguments', {})
+        if isinstance(raw_args, dict):
+            for arg_name, arg_info in raw_args.items():
+                if isinstance(arg_info, dict):
+                    input_arguments.append({
+                        'name': arg_name,
+                        'description': arg_info.get('description', '').strip(),
+                        'default': str(arg_info.get('default', '')),
+                    })
 
         results.append({
             'name': test.get('name', 'Unnamed Test'),
@@ -83,6 +103,9 @@ def fetch_atomic_tests(technique_id: str, user_agent: str = "") -> List[Dict]:
             'executor': executor_name,
             'auto_generated_guid': test.get('auto_generated_guid', ''),
             'github_url': github_url,
+            'command': command,
+            'cleanup_command': cleanup_command,
+            'input_arguments': input_arguments,
         })
 
     return results

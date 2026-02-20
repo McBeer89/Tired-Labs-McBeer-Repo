@@ -21,7 +21,8 @@ import json
 import sys
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
+import re as _re
 
 # Ensure UTF-8 output on Windows to handle Unicode characters from web pages
 if sys.platform == 'win32':
@@ -52,7 +53,53 @@ from utils import (
     get_category_for_domain,
 )
 
-REPORT_VERSION = "1.2"
+REPORT_VERSION = "1.3"
+
+# Platform keywords for --platform filtering (checked case-insensitively)
+PLATFORM_KEYWORDS = {
+    'windows': ['windows', 'powershell', 'cmd.exe', 'iis', 'registry',
+                'svchost', '.exe', 'ntfs', 'mshta', 'wmi', 'sysmon',
+                'active directory', 'kerberos', '.net framework'],
+    'linux': ['linux', 'apache', 'nginx', 'ubuntu', 'centos', 'bash',
+              '/etc/', 'systemd', 'cron', 'auditd', 'redhat', 'debian'],
+    'macos': ['macos', 'mac os', 'darwin', 'launchd', 'dylib', 'osascript',
+              'applescript', 'plist', 'mach-o'],
+    'azure': ['azure', 'entra', 'saas', 'cloud', 'arm template',
+              'subscription', 'tenant', 'microsoft 365', 'office 365'],
+    'ad': ['active directory', 'ldap', 'kerberos', 'domain controller',
+           'ntds', 'dcsync', 'krbtgt', 'spn', 'group policy'],
+}
+
+
+def _is_off_platform(result: Dict, target_platform: str) -> Optional[str]:
+    """
+    Check if a search result appears to target a different platform.
+
+    Returns the detected off-platform name if the result matches a *different*
+    platform's keywords but NOT the target platform, else None.
+    """
+    if not target_platform:
+        return None
+
+    text = ' '.join([
+        (result.get('title') or ''),
+        (result.get('description') or ''),
+        (result.get('url') or ''),
+    ]).lower()
+
+    target_kws = PLATFORM_KEYWORDS.get(target_platform, [])
+    matches_target = any(kw in text for kw in target_kws)
+
+    # Check if it matches a different platform
+    for plat, kws in PLATFORM_KEYWORDS.items():
+        if plat == target_platform:
+            continue
+        if any(kw in text for kw in kws):
+            # Only flag as off-platform if it does NOT also match the target
+            if not matches_target:
+                return plat
+
+    return None
 
 
 def parse_args():
@@ -166,6 +213,21 @@ Examples:
         ),
     )
 
+    parser.add_argument(
+        "--trr-id",
+        dest="trr_id",
+        default="",
+        metavar="TRR_ID",
+        help="TRR identifier (e.g., 'TRR0042') for the output filename and report header",
+    )
+
+    parser.add_argument(
+        "--platform", "-p",
+        choices=["windows", "linux", "macos", "azure", "ad"],
+        default="",
+        help="Target platform — moves off-platform results to end of report",
+    )
+
     return parser.parse_args()
 
 
@@ -185,13 +247,20 @@ def print_progress(message: str, verbose: bool = False, quiet: bool = False, alw
         print(f"[{timestamp}] {message}")
 
 
-def _build_ddm_hints(data_sources: List[str]) -> List[str]:
+def _filter_ds_codes(data_sources: List[str]) -> List[str]:
+    """Remove DS####-style ATT&CK identifiers from a data sources list."""
+    return [ds for ds in data_sources if not _re.match(r'^DS\d{4}$', ds.strip())]
+
+
+def _build_ddm_hints(data_sources: List[str]) -> List[Tuple[str, List[str]]]:
     """
     Map known ATT&CK data source names to suggested DDM operations.
-    Returns a list of suggested starting operations for the DDM.
+
+    Returns a list of (operation_name, [contributing_source_names]) tuples.
+    DS#### codes are filtered out before matching.
     """
-    hints = []
-    ds_lower = ' '.join(data_sources).lower()
+    clean_sources = _filter_ds_codes(data_sources)
+    ds_lower = ' '.join(clean_sources).lower()
 
     mappings = [
         ('process', 'Create/Terminate Process'),
@@ -216,109 +285,124 @@ def _build_ddm_hints(data_sources: List[str]) -> List[str]:
         ('script', 'Execute Script'),
         ('wmi', 'Create WMI Subscription / Execute WMI Query'),
         ('certificate', 'Access/Create Digital Certificate'),
+        ('application log', 'Review Application Logs'),
     ]
 
+    hints = []
     for keyword, operation in mappings:
         if keyword in ds_lower:
-            hints.append(f'`[E][I][O]` {operation}')
+            matched = [ds for ds in clean_sources if keyword in ds.lower()]
+            hints.append((operation, matched))
 
-    return hints if hints else ['`[?]` (Identify essential operations from the technique description above)']
+    return hints
 
 
-def _generate_research_checklist(
-    technique_id: str,
+def _generate_research_summary(
     technique_info: Optional[Dict],
     atomic_tests: List[Dict],
+    existing_trrs: List[Dict],
+    existing_ddms: List[Dict],
     search_results: Dict[str, List[Dict]],
+    config: 'ConfigManager',
+    no_ddg: bool = False,
+    platform_filter: str = "",
+    trr_id: str = "",
 ) -> List[str]:
-    """Generate a quick-start research checklist for novice researchers."""
+    """Generate a compact Research Summary table with DDM starting points."""
     lines = []
-    lines.append("## Quick-Start Research Checklist")
+    lines.append("## Research Summary")
     lines.append("")
-    lines.append("> **How to use this:** Work through each phase in order. Complete all")
-    lines.append("> stop-checks before advancing. Mark items `[x]` as you finish them.")
-    lines.append("")
+    lines.append("| | |")
+    lines.append("|---|---|")
 
-    # Phase 1
-    lines.append("### Phase 1 — Technique Overview")
-    lines.append("")
-    if technique_info:
-        lines.append(f"- [x] Official ATT&CK page fetched: [{technique_id}]({technique_info.get('url', '')})")
-        lines.append("- [ ] Read the description and summarize the technique in 2–3 sentences **without naming any tool**")
-        if technique_info.get('tactics'):
-            lines.append(f"- [x] Tactics identified: {', '.join(technique_info['tactics'])}")
-        else:
-            lines.append("- [ ] Identify which tactic(s) this technique supports")
-        if technique_info.get('platforms'):
-            lines.append(f"- [x] Platforms in scope: {', '.join(technique_info['platforms'])}")
-        else:
-            lines.append("- [ ] Identify affected platforms")
+    # Tactics
+    tactics = ', '.join(technique_info.get('tactics', [])) if technique_info else 'Unknown'
+    lines.append(f"| **Tactics** | {tactics} |")
+
+    # Platforms
+    platforms = ', '.join(technique_info.get('platforms', [])) if technique_info else 'Unknown'
+    lines.append(f"| **Platforms** | {platforms} |")
+
+    # Platform filter (when --platform is set)
+    if platform_filter:
+        lines.append(f"| **Platform Filter** | `{platform_filter}` |")
+
+    # TRR ID (when --trr-id is set)
+    if trr_id:
+        lines.append(f"| **TRR ID** | {trr_id} |")
+
+    # Atomic tests
+    if atomic_tests:
+        n = len(atomic_tests)
+        word = "test" if n == 1 else "tests"
+        lines.append(f"| **Atomic Tests** | {n} {word} ([see below](#atomic-red-team-emulation-tests)) |")
     else:
-        lines.append("- [ ] Fetch the official ATT&CK page (MITRE fetch failed — check your connection)")
-        lines.append("- [ ] Summarize the technique in 2–3 sentences without naming any tool")
-        lines.append("- [ ] Identify tactics and platforms")
-    lines.append("")
+        lines.append("| **Atomic Tests** | None found |")
 
-    # Phase 2
-    lines.append("### Phase 2 — Technical Background")
-    lines.append("")
-    doc_count = len(search_results.get('microsoft_docs', []))
-    if doc_count > 0:
-        lines.append("- [ ] Review vendor documentation sources found below")
+    # Existing TRRs
+    if existing_trrs:
+        # Build breakdown by match_type
+        type_counts: Dict[str, int] = {}
+        for trr in existing_trrs:
+            mt = trr.get('match_type', 'unknown')
+            type_counts[mt] = type_counts.get(mt, 0) + 1
+        breakdown = ', '.join(f"{count} {mtype}" for mtype, count in type_counts.items())
+        lines.append(f"| **Existing TRRs** | {len(existing_trrs)} matches ({breakdown}) |")
     else:
-        lines.append("- [ ] Search vendor documentation for the underlying technology")
-    lines.append("- [ ] Identify the APIs, protocols, or OS services involved")
-    lines.append("- [ ] Understand what prerequisites the attacker must satisfy")
-    lines.append("- [ ] Document which security controls this technique bypasses or abuses")
-    lines.append("- [ ] **Stop check:** Can you explain *why* this technique works without referencing a tool?")
+        lines.append("| **Existing TRRs** | 0 matches |")
+
+    # Sources found (only when DDG search was run)
+    if not no_ddg:
+        total_sources = sum(len(r) for r in search_results.values())
+        high_priority_count = 0
+        for category, results in search_results.items():
+            priority = config.trusted_sources.get(category, {}).get('priority', 'medium')
+            if priority == 'high':
+                high_priority_count += len(results)
+        lines.append(f"| **Sources Found** | {total_sources} total · {high_priority_count} high-priority |")
+
     lines.append("")
 
-    # Phase 3
-    lines.append("### Phase 3 — DDM Construction")
-    lines.append("")
-    lines.append("Suggested starting operations based on ATT&CK data sources:")
-    lines.append("")
+    # DDM Starting Points
     data_sources = technique_info.get('data_sources', []) if technique_info else []
     hints = _build_ddm_hints(data_sources)
-    for hint in hints:
-        lines.append(f"- [ ] {hint}")
-    lines.append("")
-    lines.append("For each operation, classify it:")
-    lines.append("  - `[E]` Essential — must happen for the technique to work")
-    lines.append("  - `[I]` Immutable — attacker cannot change it")
-    lines.append("  - `[O]` Observable — visible through available telemetry")
-    lines.append("- [ ] **Stop check:** No unresolved `[?]` markers remain")
-    lines.append("")
 
-    # Phase 4
-    lines.append("### Phase 4 — Emulation Tests")
-    lines.append("")
-    if atomic_tests:
-        test_word = "test" if len(atomic_tests) == 1 else "tests"
-        lines.append(f"- [x] {len(atomic_tests)} Atomic Red Team {test_word} found — see **Atomic Red Team Emulation Tests** section below")
-        lines.append("- [ ] Review each test to validate your DDM covers the operations it performs")
+    if hints:
+        lines.append("**DDM Starting Points** (from ATT&CK data sources):")
+        lines.append("")
+        for operation, source_names in hints:
+            sources_str = ', '.join(source_names) if source_names else '(no specific component)'
+            lines.append(f"- `{operation}` ← {sources_str}")
+        lines.append("")
     else:
-        lines.append("- [ ] No Atomic Red Team tests found for this technique")
-        lines.append("- [ ] Check GitHub for any community-contributed tests or POCs")
-        lines.append("- [ ] Consider creating an atomic test to validate your DDM")
-    lines.append("")
+        lines.append("**DDM Starting Points:** Identify essential operations from the technique description and ATT&CK data sources.")
+        lines.append("")
 
-    # Phase 5
-    lines.append("### Phase 5 — Detection & TRR Documentation")
-    lines.append("")
-    lines.append("- [ ] Review **GitHub Resources** and **Sigma Detection Rules** — see sections below")
-    lines.append("- [ ] Map each essential operation to an available telemetry source")
-    lines.append("- [ ] Identify detection gaps (essential operations with no telemetry)")
-    lines.append("- [ ] Write procedure narratives (not step lists — explain *why* each step works)")
-    lines.append("- [ ] Assemble the TRR document following the TIRED Labs template")
-    lines.append("")
     lines.append("---")
     lines.append("")
 
     return lines
 
 
-def _generate_atomic_section(atomic_tests: List[Dict], technique_id: str) -> List[str]:
+def _truncate_code_block(text: str, max_lines: int, max_chars: int = 600) -> Tuple[str, bool]:
+    """Truncate a code block to max_lines and max_chars, returning (text, was_truncated)."""
+    code_lines = text.split('\n')
+    truncated = False
+    if len(code_lines) > max_lines:
+        code_lines = code_lines[:max_lines]
+        truncated = True
+    result = '\n'.join(code_lines)
+    if len(result) > max_chars:
+        result = result[:max_chars]
+        truncated = True
+    return result, truncated
+
+
+def _generate_atomic_section(
+    atomic_tests: List[Dict],
+    technique_id: str,
+    platform: str = "",
+) -> List[str]:
     """Generate the Atomic Red Team tests section of the report."""
     lines = []
     lines.append("## Atomic Red Team Emulation Tests")
@@ -345,21 +429,224 @@ def _generate_atomic_section(atomic_tests: List[Dict], technique_id: str) -> Lis
             executor = test.get('executor', 'unknown')
             guid = test.get('auto_generated_guid', '')
 
+            # Platform annotation when --platform is active
+            platform_note = ""
+            if platform and platforms:
+                test_plats = [p.lower() for p in platforms]
+                if platform.lower() in test_plats:
+                    platform_note = " ✅"
+                else:
+                    platform_note = " ⚠️ *(off-platform)*"
+
             if platforms:
-                lines.append(f"**Platforms:** {', '.join(platforms)}")
+                lines.append(f"**Platforms:** {', '.join(platforms)}{platform_note}")
             lines.append(f"**Executor:** `{executor}`")
             if guid:
                 lines.append(f"**GUID:** `{guid}`")
             lines.append("")
+
             desc = test.get('description', '').strip()
             if desc:
                 lines.append(f"**Description:** {clean_text(desc, 400)}")
+                lines.append("")
+
+            # Input arguments table
+            args = test.get('input_arguments', [])
+            if args:
+                lines.append("**Arguments:**")
+                lines.append("")
+                lines.append("| Name | Default |")
+                lines.append("|------|---------|")
+                for arg in args:
+                    name = arg.get('name', '')
+                    default = clean_text(arg.get('default', ''), 80)
+                    lines.append(f"| `{name}` | `{default}` |")
+                lines.append("")
+
+            # Command block
+            command = test.get('command', '')
+            if command:
+                # Map executor names to markdown code fence language hints
+                lang_map = {
+                    'command_prompt': 'cmd',
+                    'powershell': 'powershell',
+                    'bash': 'bash',
+                    'sh': 'bash',
+                    'manual': '',
+                }
+                lang = lang_map.get(executor, executor)
+                cmd_text, was_truncated = _truncate_code_block(command, 8, 600)
+                lines.append("**Command:**")
+                lines.append("")
+                lines.append(f"```{lang}")
+                lines.append(cmd_text)
+                if was_truncated:
+                    lines.append("# [truncated — see full test on GitHub]")
+                lines.append("```")
+                lines.append("")
+            elif executor == 'manual':
+                lines.append("*(no commands defined — manual test)*")
+                lines.append("")
+
+            # Cleanup command block
+            cleanup = test.get('cleanup_command', '')
+            if cleanup:
+                lang_map = {
+                    'command_prompt': 'cmd',
+                    'powershell': 'powershell',
+                    'bash': 'bash',
+                    'sh': 'bash',
+                    'manual': '',
+                }
+                lang = lang_map.get(executor, executor)
+                cleanup_text, was_truncated = _truncate_code_block(cleanup, 4, 600)
+                lines.append("**Cleanup:**")
+                lines.append("")
+                lines.append(f"```{lang}")
+                lines.append(cleanup_text)
+                if was_truncated:
+                    lines.append("# [truncated]")
+                lines.append("```")
                 lines.append("")
 
     lines.append("")
     lines.append("---")
     lines.append("")
     return lines
+
+
+# ---------------------------------------------------------------------------
+# Source type classification (Improvement 6)
+# ---------------------------------------------------------------------------
+
+_DETECTION_SIGNALS = {
+    'domain_patterns': [
+        'elastic.co/docs/reference/security',
+        'elastic.co/guide/en/security/',
+        'github.com/SigmaHQ',
+        'github.com/splunk/security_content',
+    ],
+    'url_keywords': ['prebuilt-rule', 'detection-rule', 'hunting-query',
+                     'sigma', 'alert-reference', 'alerts-'],
+    'title_keywords': ['detection rule', 'hunting query', 'sigma rule',
+                       'prebuilt rule', 'attack surface reduction',
+                       'sysmon', 'event id', 'kql', 'kusto'],
+}
+
+_THREAT_INTEL_SIGNALS = {
+    'domain_patterns': [
+        'thedfirreport.com',
+        'mandiant.com/resources',
+        'unit42.paloaltonetworks.com',
+    ],
+    'url_keywords': ['threat-intelligence', 'threat-research', 'apt-',
+                     'campaign', 'intrusion-set', 'exploitation-leads'],
+    'title_keywords': ['intrusion', 'campaign', 'apt', 'threat actor',
+                       'exploitation leads to', 'exploits', 'unveiling',
+                       'malware analysis', 'incident response'],
+}
+
+_REFERENCE_SIGNALS = {
+    'url_keywords': ['learn.microsoft.com/en-us/windows/',
+                     'learn.microsoft.com/en-us/iis/',
+                     'learn.microsoft.com/en-us/dotnet/',
+                     'learn.microsoft.com/en-us/openspecs/',
+                     'learn.microsoft.com/en-us/previous-versions/'],
+    'title_keywords': ['api reference', 'documentation', 'architecture',
+                       'protocol', 'specification'],
+}
+
+
+def _classify_source_type(result: Dict) -> Optional[str]:
+    """
+    Classify a search result into Detection, Threat Intel, or Reference.
+    Returns a short label string or None if no strong signal.
+    """
+    title = (result.get('title') or '').lower()
+    url = (result.get('url') or '').lower()
+    text = f"{title} {url}"
+
+    # Check detection signals
+    for pattern in _DETECTION_SIGNALS.get('domain_patterns', []):
+        if pattern in url:
+            return 'Detection'
+    for kw in _DETECTION_SIGNALS.get('url_keywords', []):
+        if kw in url:
+            return 'Detection'
+    for kw in _DETECTION_SIGNALS.get('title_keywords', []):
+        if kw in title:
+            return 'Detection'
+
+    # Check threat intel signals
+    for pattern in _THREAT_INTEL_SIGNALS.get('domain_patterns', []):
+        if pattern in url:
+            return 'Threat Intel'
+    for kw in _THREAT_INTEL_SIGNALS.get('url_keywords', []):
+        if kw in url:
+            return 'Threat Intel'
+    for kw in _THREAT_INTEL_SIGNALS.get('title_keywords', []):
+        if kw in title:
+            return 'Threat Intel'
+
+    # Check reference signals
+    for kw in _REFERENCE_SIGNALS.get('url_keywords', []):
+        if kw in url:
+            return 'Reference'
+    for kw in _REFERENCE_SIGNALS.get('title_keywords', []):
+        if kw in title:
+            return 'Reference'
+
+    return None
+
+
+def _render_search_result(
+    lines: List[str],
+    index: int,
+    result: Dict,
+    config: 'ConfigManager',
+    extra_note: str = "",
+) -> None:
+    """Render a single search result as markdown, appending to lines."""
+    title = result.get('title', 'Untitled')
+    url = result.get('url', '')
+    description = result.get('description', '')
+    date = result.get('date')
+    domain = result.get('domain', '')
+
+    link_dead = result.get('link_status') == 'dead'
+    dead_tag = " (link may be broken)" if link_dead else ""
+
+    # Source type tag (Improvement 6)
+    source_tag = _classify_source_type(result)
+    tag_str = f" `{source_tag}`" if source_tag else ""
+
+    lines.append(f"### {index}. [{title}]({url}){dead_tag}{tag_str}")
+    lines.append("")
+
+    if extra_note:
+        lines.append(f"> {extra_note}")
+    if domain:
+        lines.append(f"> **Source:** {domain}")
+    if date:
+        lines.append(f"> **Published:** {format_date(date)}")
+    lines.append("")
+
+    if description:
+        excerpt_len = config.output_settings.get('excerpt_length', 200)
+        lines.append(f"**Excerpt:** {clean_text(description, excerpt_len)}")
+        lines.append("")
+
+    score = result.get('relevance_score', 0)
+    if score >= 0.50:
+        relevance_label = "Strong Match"
+    elif score >= 0.25:
+        relevance_label = "Likely Relevant"
+    elif score >= 0.10:
+        relevance_label = "Possible Match"
+    else:
+        relevance_label = "Weak Match"
+    lines.append(f"**Relevance:** {relevance_label} ({score:.0%})")
+    lines.append("")
 
 
 def generate_markdown_report(
@@ -374,6 +661,8 @@ def generate_markdown_report(
     no_ddg: bool = False,
     filtered_count: int = 0,
     min_score: float = 0.25,
+    trr_id: str = "",
+    platform: str = "",
 ) -> str:
     """
     Generate a markdown report with all gathered information.
@@ -388,6 +677,8 @@ def generate_markdown_report(
         config: Configuration manager
         no_enrich: Whether metadata enrichment was skipped
         no_ddg: Whether DuckDuckGo search was skipped
+        trr_id: Optional TRR identifier for report header
+        platform: Optional platform filter for off-platform result separation
 
     Returns:
         Markdown formatted string
@@ -417,18 +708,24 @@ def generate_markdown_report(
     else:
         scan_mode = "Full Enriched Run"
     lines.append(f"**Scan Mode:** {scan_mode}")
-
-    if technique_info:
-        if technique_info.get('tactics'):
-            lines.append(f"**Tactics:** {', '.join(technique_info.get('tactics', []))}")
-        if technique_info.get('platforms'):
-            lines.append(f"**Platforms:** {', '.join(technique_info.get('platforms', []))}")
+    if trr_id:
+        lines.append(f"**TRR ID:** {trr_id}")
     lines.append("")
     lines.append("---")
     lines.append("")
 
-    # Quick-start research checklist
-    lines.extend(_generate_research_checklist(technique_id, technique_info, atomic_tests, search_results))
+    # Research Summary (compact table replacing the old checklist)
+    lines.extend(_generate_research_summary(
+        technique_info=technique_info,
+        atomic_tests=atomic_tests,
+        existing_trrs=existing_trrs,
+        existing_ddms=existing_ddms,
+        search_results=search_results,
+        config=config,
+        no_ddg=no_ddg,
+        platform_filter=platform,
+        trr_id=trr_id,
+    ))
 
     # MITRE ATT&CK Reference
     if technique_info:
@@ -442,8 +739,10 @@ def generate_markdown_report(
             lines.append("")
 
         if technique_info.get('data_sources'):
-            lines.append(f"**Data Sources:** {', '.join(technique_info['data_sources'])}")
-            lines.append("")
+            clean_ds = _filter_ds_codes(technique_info['data_sources'])
+            if clean_ds:
+                lines.append(f"**Data Sources:** {', '.join(clean_ds)}")
+                lines.append("")
 
         if technique_info.get('permissions_required'):
             lines.append(f"**Permissions Required:** {', '.join(technique_info['permissions_required'])}")
@@ -471,7 +770,7 @@ def generate_markdown_report(
         lines.append("")
 
     # Atomic Red Team section
-    lines.extend(_generate_atomic_section(atomic_tests, technique_id))
+    lines.extend(_generate_atomic_section(atomic_tests, technique_id, platform=platform))
 
     # Existing TRRs
     if existing_trrs:
@@ -510,12 +809,28 @@ def generate_markdown_report(
         lines.append("---")
         lines.append("")
 
-    # Existing DDMs
+    # Existing DDMs (cross-reference with TRR titles when available)
     if existing_ddms:
         lines.append("## Existing DDMs in Repository")
         lines.append("")
+        # Build TRR-ID -> title lookup from existing TRRs
+        trr_title_map: Dict[str, str] = {}
+        for trr in existing_trrs:
+            tid = trr.get('trr_id', '')
+            ttitle = trr.get('title', '')
+            if tid and ttitle:
+                trr_title_map[tid.lower()] = ttitle
         for ddm in existing_ddms:
-            lines.append(f"- `{ddm.get('file_name', '')}`")
+            fname = ddm.get('file_name', '')
+            # Extract TRR ID from filename: ddm_trr0011_ad_a.json -> trr0011
+            trr_match = _re.search(r'(trr\d+)', fname, _re.IGNORECASE)
+            parent_title = ""
+            if trr_match:
+                parent_title = trr_title_map.get(trr_match.group(1).lower(), "")
+            if parent_title:
+                lines.append(f"- `{fname}` — {parent_title}")
+            else:
+                lines.append(f"- `{fname}`")
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -548,11 +863,7 @@ def generate_markdown_report(
         lines.append("---")
         lines.append("")
     else:
-        quick_scan_note = (
-            no_enrich and
-            "> **Quick Scan Mode:** Page metadata (titles, publication dates) was not fetched.\n"
-            "> Descriptions shown are DuckDuckGo snippets only. Re-run without `--no-enrich` for full detail."
-        )
+        off_platform_results = []  # Collect results that target a different platform
 
         for category in priority_order:
             results = search_results.get(category, [])
@@ -564,6 +875,19 @@ def generate_markdown_report(
             if priority == 'high':
                 high_priority_count += len(results)
 
+            # Split into on-platform and off-platform when --platform is set
+            on_platform = []
+            for result in results:
+                detected_plat = _is_off_platform(result, platform) if platform else None
+                if detected_plat:
+                    result['_detected_platform'] = detected_plat
+                    off_platform_results.append(result)
+                else:
+                    on_platform.append(result)
+
+            if not on_platform:
+                continue
+
             label = category_labels.get(category, category.replace('_', ' ').title())
             lines.append(f"## {label}")
             lines.append("")
@@ -573,41 +897,25 @@ def generate_markdown_report(
                 lines.append("> Descriptions shown are DuckDuckGo snippets only. Re-run without `--no-enrich` for full detail.")
                 lines.append("")
 
-            for i, result in enumerate(results, 1):
-                title = result.get('title', 'Untitled')
-                url = result.get('url', '')
-                description = result.get('description', '')
-                date = result.get('date')
-                domain = result.get('domain', '')
+            for i, result in enumerate(on_platform, 1):
+                _render_search_result(lines, i, result, config)
 
-                link_dead = result.get('link_status') == 'dead'
-                dead_tag = " (link may be broken)" if link_dead else ""
-                lines.append(f"### {i}. [{title}]({url}){dead_tag}")
-                lines.append("")
+            lines.append("---")
+            lines.append("")
 
-                if domain:
-                    lines.append(f"> **Source:** {domain}")
-                if date:
-                    lines.append(f"> **Published:** {format_date(date)}")
-                lines.append("")
-
-                if description:
-                    excerpt_len = config.output_settings.get('excerpt_length', 200)
-                    lines.append(f"**Excerpt:** {clean_text(description, excerpt_len)}")
-                    lines.append("")
-
-                score = result.get('relevance_score', 0)
-                if score >= 0.50:
-                    relevance_label = "Strong Match"
-                elif score >= 0.25:
-                    relevance_label = "Likely Relevant"
-                elif score >= 0.10:
-                    relevance_label = "Possible Match"
-                else:
-                    relevance_label = "Weak Match"
-                lines.append(f"**Relevance:** {relevance_label} ({score:.0%})")
-                lines.append("")
-
+        # Render off-platform results in a separate section
+        if off_platform_results:
+            lines.append("## Other Platforms")
+            lines.append("")
+            lines.append(
+                f"*{len(off_platform_results)} result(s) moved here — "
+                f"appear to target a different platform than `{platform}`.*"
+            )
+            lines.append("")
+            for i, result in enumerate(off_platform_results, 1):
+                detected = result.get('_detected_platform', 'unknown')
+                _render_search_result(lines, i, result, config,
+                                     extra_note=f"Likely platform: **{detected}**")
             lines.append("---")
             lines.append("")
 
@@ -735,8 +1043,9 @@ def main():
         search_results: Dict[str, List[Dict]] = {}
     else:
         print_progress("Step 4/5 — Searching for research sources...", always=True, quiet=quiet)
-        print_progress(f"         Searching across {len(config.trusted_sources)} source categories...", always=True, quiet=quiet)
-        print_progress("         (This takes ~30–60 seconds due to rate limiting)", always=True, quiet=quiet)
+        t1_count = len(config.tier1_domains)
+        print_progress(f"         Running {t1_count} focused queries for high-value sources...", always=True, quiet=quiet)
+        print_progress(f"         Plus sweep queries across {len(config.trusted_sources)} categories...", always=True, quiet=quiet)
 
         search_results = search_technique_sources(
             technique_id=technique_id,
@@ -748,6 +1057,7 @@ def main():
             verbose=verbose,
             mitre_refs=technique_info.get('references', []) if technique_info else None,
             use_cache=not args.no_cache,
+            tier1_domains=config.tier1_domains,
         )
 
         total_results = sum(len(r) for r in search_results.values())
@@ -757,10 +1067,23 @@ def main():
     total_results = sum(len(r) for r in search_results.values())
     if not args.no_enrich and not args.no_ddg and total_results > 0:
         print_progress("Step 5/5 — Enriching results with page metadata...", always=True, quiet=quiet)
-        print_progress("         Fetching page titles and descriptions (this may take a moment)...", always=True, quiet=quiet)
         for category, results in search_results.items():
             if results:
                 search_results[category] = enrich_search_results(results, user_agent)
+        # Report enrichment stats
+        enriched_count = sum(
+            1 for cat_results in search_results.values()
+            for r in cat_results if r.get('_enrichment_status') == 'enriched'
+        )
+        skipped_count = sum(
+            1 for cat_results in search_results.values()
+            for r in cat_results if r.get('_enrichment_status') == 'skipped'
+        )
+        print_progress(
+            f"         Enriched {enriched_count} of {total_results} results "
+            f"({skipped_count} already had good metadata)",
+            always=True, quiet=quiet,
+        )
     elif args.validate_links and not args.no_ddg and total_results > 0:
         print_progress("Step 5/5 — Validating links (HEAD requests only)...", always=True, quiet=quiet)
         for category, results in search_results.items():
@@ -833,6 +1156,8 @@ def main():
         no_ddg=args.no_ddg,
         filtered_count=filtered_count,
         min_score=min_score,
+        trr_id=args.trr_id,
+        platform=args.platform or "",
     )
 
     # Determine output filename suffix
@@ -846,14 +1171,18 @@ def main():
     # Save markdown report
     output_dir = args.output or Path(config.output_settings.get('default_output_dir', 'output'))
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / f"{technique_id}_{filename_suffix}.md"
+    if args.trr_id:
+        output_file = output_dir / f"{args.trr_id}_{filename_suffix}.md"
+    else:
+        output_file = output_dir / f"{technique_id}_{filename_suffix}.md"
 
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(report)
 
     # Optionally save JSON
     if args.json:
-        json_file = output_dir / f"{technique_id}_{filename_suffix}.json"
+        json_base = args.trr_id if args.trr_id else technique_id
+        json_file = output_dir / f"{json_base}_{filename_suffix}.json"
         raw_data = {
             "technique_id": technique_id,
             "technique_name": technique_name,
@@ -877,7 +1206,7 @@ def main():
     print(f"ART tests:      {len(atomic_tests)}")
     print("")
     if not quiet:
-        print("Next step: Open the report and work through the Quick-Start Checklist.")
+        print("Next step: Open the report and review the Research Summary and DDM Starting Points.")
 
     return 0
 

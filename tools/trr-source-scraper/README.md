@@ -79,6 +79,12 @@ python trr_scraper.py T1003.006 --no-cache
 # Override the GitHub repo for TRR/DDM lookup
 python trr_scraper.py T1003.006 --trr-repo my-org/my-techniques
 
+# Tag the report with a TRR ID (changes output filename and adds ID to header)
+python trr_scraper.py T1003.006 --trr-id TRR0028
+
+# Filter results by platform — off-platform hits move to a separate section
+python trr_scraper.py T1505.003 --platform windows
+
 # Verbose mode for debugging
 python trr_scraper.py T1003.006 --verbose
 
@@ -102,6 +108,8 @@ python trr_scraper.py T1003.006 --quiet
 | `--validate-links` | - | Check link liveness via HEAD requests |
 | `--trr-repo` | - | Override GitHub repo for TRR/DDM lookup |
 | `--min-score` | - | Minimum relevance score (0.0–1.0) to include a result (default: 0.25) |
+| `--trr-id` | - | TRR identifier (e.g., `TRR0042`) for the output filename and report header |
+| `--platform` | `-p` | Target platform (`windows`, `linux`, `macos`, `azure`, `ad`) — moves off-platform results to a separate section |
 | `--verbose` | `-v` | Print detailed progress and diagnostic information |
 | `--quiet` | `-q` | Suppress all output except the final save confirmation |
 
@@ -127,18 +135,18 @@ To use a different repository, either edit the config or pass `--trr-repo`:
 python trr_scraper.py T1003.006 --trr-repo my-org/my-techniques
 ```
 
-The scanner matches TRRs using technique ID (exact match), parent technique ID, and technique name keywords, and assigns a match confidence score.
+The scanner matches TRRs using technique ID (exact match), parent technique ID, and technique name keywords, and assigns a match confidence score. DDM files in the repository are cross-referenced with matched TRR titles, so the output shows context like `ddm_trr0011_ad_a.json — DC Synchronization Attack (DCSync)` instead of bare filenames.
 
 ## Output
 
 The tool generates a markdown report containing:
 
-1. **Quick-Start Research Checklist** - Phased workflow guide for researchers
-2. **MITRE ATT&CK Reference** - Technique summary, tactics, platforms, data sources
-3. **Atomic Red Team Emulation Tests** - Available test cases with execution details
-4. **Existing TRRs** - Previously completed reports matching this technique
-5. **Existing DDMs** - Detection Data Models related to the technique
-6. **Categorized Sources** - Research sources organized by type, sorted by relevance score:
+1. **Research Summary** — Compact table with tactics, platforms, test counts, TRR matches, source counts, and DDM starting points mapped from ATT&CK data sources
+2. **MITRE ATT&CK Reference** — Technique summary, data sources (DS#### codes filtered out), permissions, references
+3. **Atomic Red Team Emulation Tests** — Test cases with inline command blocks, cleanup commands, and input argument tables (truncated for readability)
+4. **Existing TRRs** — Previously completed reports matching this technique
+5. **Existing DDMs** — Detection Data Models cross-referenced with parent TRR titles
+6. **Categorized Sources** — Research sources organized by type, sorted by relevance score, with inline source type tags (`Detection`, `Threat Intel`, `Reference`):
    - Security Research Blogs (High Priority)
    - Microsoft Documentation (High Priority)
    - Conference Presentations (Medium Priority)
@@ -146,7 +154,8 @@ The tool generates a markdown report containing:
    - Sigma Rules (Medium Priority)
    - LOLBAS/GTFOBins (Medium Priority)
    - Academic Papers (Low Priority)
-7. **Additional Search Queries** - Suggested queries for manual research
+7. **Other Platforms** — When `--platform` is set, results targeting a different platform are collected here with detected platform annotations
+8. **Additional Search Queries** — Suggested queries for manual research
 
 ### Relevance Scoring
 
@@ -157,6 +166,29 @@ Each source link is scored 0-100% based on how likely it is to contain substanti
 - **Possible Match** (10-24%) - Indirect or partial references
 - Results below 25% are filtered out by default (configurable via `--min-score` or `min_relevance_score` in config)
 
+### Two-Tier Search Strategy
+
+The tool uses a two-tier search approach to balance depth and breadth:
+
+- **Tier 1** — Individual targeted queries for high-value domains (configured in `tier1_domains`). Each domain gets its own `"<technique_name>" site:<domain>` query with max 2 results. This ensures coverage of sources like thedfirreport.com and mandiant.com that were previously missed in batched queries.
+- **Tier 2** — Batched OR queries for remaining domains (groups of 5 per query), providing broad sweep coverage across the full domain list.
+
+Tier-1 results sort first within each category.
+
+### Source Type Tags
+
+Search results are automatically classified with inline tags when there's a strong signal:
+
+- `Detection` — Detection rules, hunting queries, alert references (e.g., Elastic prebuilt rules, Sigma rules)
+- `Threat Intel` — Intrusion reports, campaign analysis, APT write-ups (e.g., DFIR Report, Mandiant)
+- `Reference` — Vendor documentation, API docs, protocol specs (e.g., Microsoft Learn architecture docs)
+
+Results with no clear signal receive no tag.
+
+### Smart Enrichment
+
+After gathering search results, the tool selectively fetches page metadata only for results that need it. Results that already have adequate title and description (>100 chars) from the search engine are skipped. PDFs are always skipped (no extractable HTML metadata). Video platform URLs are always enriched (DuckDuckGo titles are frequently garbled). Progress output shows how many results were enriched vs. skipped.
+
 ### Search Result Caching
 
 DuckDuckGo search results are cached for 1 day in `output/.cache/` to avoid rate limiting on repeated runs. Use `--no-cache` to force fresh queries. MITRE ATT&CK data is cached for 7 days.
@@ -164,6 +196,27 @@ DuckDuckGo search results are cached for 1 day in `output/.cache/` to avoid rate
 ## Configuration
 
 The tool's behavior is customized via `config/sources.json`:
+
+### Tier-1 Domains
+
+High-value domains that receive individual, targeted search queries (one query per domain, max 2 results each). This ensures coverage of sources that most consistently produce deep technical content, even when a category has 20+ domains:
+
+```json
+{
+  "tier1_domains": [
+    "thedfirreport.com",
+    "elastic.co",
+    "redcanary.com",
+    "specterops.io",
+    "crowdstrike.com",
+    "learn.microsoft.com",
+    "techcommunity.microsoft.com",
+    "mandiant.com"
+  ]
+}
+```
+
+Domains not in this list are searched using batched OR queries (groups of 5 domains per query).
 
 ### Source Categories
 
@@ -247,17 +300,18 @@ This tool follows ethical scraping practices:
 ### Adding New Source Categories
 
 1. Edit `config/sources.json`
-2. Add a new category with domains and search settings:
+2. Add a new category with domains:
 
 ```json
 {
   "my_new_category": {
     "priority": "medium",
-    "domains": ["example-security-blog.com"],
-    "search_suffix": "analysis"
+    "domains": ["example-security-blog.com"]
   }
 }
 ```
+
+3. To prioritize specific domains for individual queries, add them to the `tier1_domains` list
 
 ### Adding New Scrapers
 

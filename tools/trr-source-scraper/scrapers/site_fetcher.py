@@ -148,19 +148,63 @@ def _clean_video_title(title: str) -> str:
     return title[:117].rsplit(' ', 1)[0] + '...'
 
 
+def _needs_enrichment(result: Dict) -> bool:
+    """
+    Determine whether a search result needs metadata enrichment.
+
+    Heuristics:
+    - Always enrich: missing/garbled title, short description, video platforms
+    - Never enrich: PDF URLs (cannot extract HTML metadata)
+    - Skip if: title is reasonable and description is adequate (>100 chars)
+    """
+    url = result.get('url', '')
+    title = result.get('title', '')
+    desc = result.get('description', '')
+
+    # Always enrich video platforms (DDG titles often garbled)
+    if _is_video_platform_url(url):
+        return True
+
+    # Never enrich PDFs
+    if url.lower().endswith('.pdf') or '/pdf/' in url.lower():
+        return False
+
+    # Missing title
+    if not title or title == 'Untitled':
+        return True
+
+    # Garbled title heuristics
+    if len(title) > 150 or title.count('|') >= 3:
+        return True
+
+    # Missing or short description
+    if not desc or len(desc) < 80:
+        return True
+
+    # DDG "Missing:" snippet — search engine couldn't find the query term
+    if 'Missing:' in desc:
+        return True
+
+    # Already has adequate metadata
+    if len(title) < 150 and len(desc) > 100:
+        return False
+
+    return True
+
+
 def enrich_search_results(results: List[Dict], user_agent: str = "") -> List[Dict]:
     """
     Enrich search results with page metadata.
 
-    Takes search results that may have basic info and fetches
-    additional metadata from each URL.
+    Uses heuristics to skip results that already have good metadata,
+    reducing unnecessary HTTP requests and improving runtime.
 
     Args:
         results: List of search result dictionaries
         user_agent: Custom user agent string
 
     Returns:
-        Enriched list of results
+        Enriched list of results with '_enrichment_status' diagnostic field
     """
     fetcher = SiteFetcher(user_agent=user_agent)
     enriched = []
@@ -170,16 +214,13 @@ def enrich_search_results(results: List[Dict], user_agent: str = "") -> List[Dic
         if not url:
             continue
 
+        if not _needs_enrichment(result):
+            result.setdefault('link_status', 'ok')
+            result['_enrichment_status'] = 'skipped'
+            enriched.append(result)
+            continue
+
         is_video = _is_video_platform_url(url)
-
-        # Don't re-fetch if we already have good metadata —
-        # UNLESS this is a video platform URL (DDG titles are often garbled)
-        if not is_video and result.get('title') and result.get('description'):
-            if len(result.get('description', '')) > 50:
-                result.setdefault('link_status', 'ok')
-                enriched.append(result)
-                continue
-
         metadata = fetcher.fetch_page_metadata(url)
 
         if metadata:
@@ -188,12 +229,14 @@ def enrich_search_results(results: List[Dict], user_agent: str = "") -> List[Dic
                 enriched_result['title'] = _clean_video_title(
                     enriched_result.get('title', '')
                 )
+            enriched_result['_enrichment_status'] = 'enriched'
             enriched.append(enriched_result)
         else:
             # Even on fetch failure for video URLs, clean the DDG title
             if is_video:
                 result['title'] = _clean_video_title(result.get('title', ''))
             result['link_status'] = 'unknown'
+            result['_enrichment_status'] = 'failed'
             enriched.append(result)
 
     return enriched

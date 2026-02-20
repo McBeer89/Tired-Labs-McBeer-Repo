@@ -1,4 +1,15 @@
 {
+  "tier1_domains": [
+    "thedfirreport.com",
+    "elastic.co",
+    "redcanary.com",
+    "specterops.io",
+    "crowdstrike.com",
+    "learn.microsoft.com",
+    "techcommunity.microsoft.com",
+    "mandiant.com"
+  ],
+
   "trusted_sources": {
     "security_research": {
       "priority": "high",

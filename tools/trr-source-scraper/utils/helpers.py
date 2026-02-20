@@ -81,6 +81,10 @@ class ConfigManager:
     def trr_repository(self) -> Dict:
         return self.config.get("trr_repository", {})
 
+    @property
+    def tier1_domains(self) -> List[str]:
+        return self.config.get("tier1_domains", [])
+
 
 def validate_technique_id(technique_id: str) -> bool:
     """
@@ -366,7 +370,10 @@ def format_date(date_str: Optional[str]) -> str:
 # ---------------------------------------------------------------------------
 
 # Preferred GitHub orgs — earlier entries have higher priority
-_PREFERRED_GITHUB_ORGS = ['redcanaryco', 'sigmahq', 'mitre-attack', 'mitre']
+_PREFERRED_GITHUB_ORGS = [
+    'redcanaryco', 'sigmahq', 'mitre-attack', 'mitre',
+    'elastic', 'splunk', 'microsoft', 'neo23x0',
+]
 
 
 def deduplicate_results(
@@ -395,9 +402,18 @@ def deduplicate_results(
     # -- helpers ----------------------------------------------------------
 
     def _github_file_key(url: str) -> Optional[str]:
-        """Extract the file path portion from a GitHub URL."""
-        m = re.search(r'github\.com/[^/]+/[^/]+/(?:blob|tree)/[^/]+/(.+)', url)
-        return m.group(1) if m else None
+        """Extract the file path portion from a GitHub URL, ignoring org/repo."""
+        # Strip anchors and query strings before matching
+        clean_url = url.split('#')[0].split('?')[0]
+        # Standard blob/tree URLs
+        m = re.search(r'github\.com/[^/]+/[^/]+/(?:blob|tree)/[^/]+/(.+)', clean_url)
+        if m:
+            return m.group(1)
+        # raw.githubusercontent.com URLs
+        m = re.search(r'raw\.githubusercontent\.com/[^/]+/[^/]+/[^/]+/(.+)', clean_url)
+        if m:
+            return m.group(1)
+        return None
 
     def _github_org(url: str) -> str:
         m = re.search(r'github\.com/([^/]+)/', url)
