@@ -99,7 +99,7 @@ websites or applications hosted on the same IIS server can be assigned to
 different application pools, giving each its own worker process with its own
 security identity and resource limits. The application pool's configured
 identity determines the security context under which all code in that pool
-executes â€” including any web shell code.
+executes — including any web shell code.
 
 By default, application pools run under low-privilege virtual accounts (e.g.,
 `IIS AppPool\DefaultAppPool`). However, administrators sometimes configure
@@ -144,10 +144,10 @@ processing.
 On a default IIS installation with ASP.NET enabled, the following extensions are
 mapped to executable handlers:
 
-- `.aspx` â€” processed by the ASP.NET engine
-- `.asp` â€” processed by the Classic ASP engine
-- `.ashx` â€” processed by the ASP.NET generic handler
-- `.asmx` â€” processed by the ASP.NET web service handler
+- `.aspx` — processed by the ASP.NET engine
+- `.asp` — processed by the Classic ASP engine
+- `.ashx` — processed by the ASP.NET generic handler
+- `.asmx` — processed by the ASP.NET web service handler
 
 IIS also supports Server-Side Includes (SSI) via the `ssinc.dll` ISAPI
 extension. If SSI is enabled, files with extensions `.shtml`, `.stm`, and
@@ -159,7 +159,7 @@ If PHP or other third-party handlers have been configured, their associated
 extensions (such as `.php`) will also be executable. For a web shell to function
 under default handler mappings, it must use a file extension that is already
 mapped to an executable handler. This is an essential and immutable constraint
-â€” unless the attacker modifies the handler mappings themselves (see the
+— unless the attacker modifies the handler mappings themselves (see the
 web.config section below).
 
 ### ASP vs. ASP.NET Execution
@@ -184,7 +184,7 @@ the compilation may occur in-process.
 
 The creation of a compiled DLL in the Temporary ASP.NET Files directory is an
 observable artifact that can serve as an additional detection signal for ASPX
-web shells. However, this artifact is not unique to web shells â€” any legitimate
+web shells. However, this artifact is not unique to web shells — any legitimate
 `.aspx` page produces the same compilation artifact on its first request.
 
 ### The Web Root and Virtual Directories
@@ -213,7 +213,7 @@ their web shell with that innocuous extension, bypassing any security controls
 that monitor only traditional script extensions. Second, and more directly, the
 attacker can define an inline `IHttpHandler` within the `web.config` file
 itself, effectively turning the configuration file into the web shell. In this
-variant, no separate script file is needed at all â€” the `web.config` is the
+variant, no separate script file is needed at all — the `web.config` is the
 sole file the attacker must write.
 
 When a `web.config` file is placed in a subdirectory, IIS dynamically reloads
@@ -256,7 +256,7 @@ activity. In this procedure, a malicious script file (typically `.aspx` or
 `.asp`) is placed in a web-accessible directory on an IIS server. The file may
 be delivered by creating a new file in the web root or by injecting web shell
 code into an existing legitimate file. The method by which the file reaches the
-server is outside the scope of this procedure â€” it could be delivered via
+server is outside the scope of this procedure — it could be delivered via
 exploitation of a file upload vulnerability, through compromised administrative
 credentials, by an attacker with existing access to the server, or through many
 other means. The delivery method is tangential: the essential prerequisite is
@@ -281,8 +281,8 @@ directly.
 
 What distinguishes this procedure is what happens next: the web shell code
 calls a process-creation API (such as `System.Diagnostics.Process.Start()` in
-.NET) to launch an external program â€” most commonly `cmd.exe` or
-`powershell.exe` â€” with command-line arguments provided by the attacker in the
+.NET) to launch an external program — most commonly `cmd.exe` or
+`powershell.exe` — with command-line arguments provided by the attacker in the
 HTTP request. This spawns a new child process under `w3wp.exe`. The child
 process executes the attacker's operating system command, and the output is
 captured by the web shell code and returned to the attacker in the HTTP
@@ -342,7 +342,7 @@ integrity monitoring detecting the appearance of new script files in the web
 root.
 
 The specific .NET API calls made by the web shell are attacker-controlled and
-effectively infinite in variety â€” the attacker can use any API available to the
+effectively infinite in variety — the attacker can use any API available to the
 .NET framework. As such, the individual API calls are tangential to the
 procedure and are not modeled in the DDM. However, the side effects of those
 API calls may produce telemetry depending on the specific action: file
@@ -357,7 +357,7 @@ logs, and registry access may produce Sysmon Events 12-14.
 The DDM for Procedure B is identical to Procedure A through the Execute Code
 operation. It diverges at the final step, where instead of a process spawn,
 the web shell calls .NET APIs directly. The Call .NET API operation has no
-direct telemetry â€” you cannot observe the API call itself. Detection for this
+direct telemetry — you cannot observe the API call itself. Detection for this
 procedure therefore depends on the file creation event (Sysmon 11 when the web
 shell is first written to disk), IIS log analysis (W3C logs showing requests to
 the shell's URL), and any telemetry produced by the side effects of the API
@@ -368,12 +368,24 @@ in-process API calls can evade most process-based detection strategies.
 ### Procedure C: Web Shell via web.config Manipulation
 
 This procedure differs from Procedures A and B at the prerequisite stage rather
-than at the execution stage. It is modeled as a distinct procedure because the
-Write Config operation fundamentally changes the behavior of the IIS handler
-matching process, introducing a different essential operation chain. Rather
-than placing a traditional script file on disk and relying on default IIS
-handler mappings, the attacker writes or modifies a `web.config` file in a
-web-accessible directory to change how IIS handles requests for that directory.
+than at the execution stage. It is modeled as a distinct procedure because
+Write Config is an essential operation that does not exist in Procedures A or B,
+and its presence changes the essential operation chain in two concrete ways.
+First, in Procedures A and B, the file extension must match a handler that is
+already mapped by default — this is an essential constraint that the attacker
+cannot change without modifying IIS configuration. Write Config removes that
+constraint: the attacker defines what extensions are executable, meaning
+file types that would be served as static content under default mappings
+(`.jpg`, `.txt`, `.log`) become executable code. The Match Handler operation
+still occurs, but it now operates against attacker-defined mappings rather than
+server defaults — a different essential input to the same pipeline operation.
+Second, in the inline `IHttpHandler` variant, Write Config eliminates the
+separate script file prerequisite entirely. In Procedures A and B, a script
+file on disk is essential. In this variant, the `web.config` is the web shell —
+no separate file is needed, and the Create New File / Modify Existing File
+operations from Procedures A and B do not occur at all. This is not a different
+delivery method for the same operations; it is a different set of essential
+operations.
 
 There are two primary variants of this approach. In the first variant, the
 attacker adds a custom handler mapping to the `web.config` that instructs IIS
@@ -388,7 +400,7 @@ monitor only for traditional script extensions.
 In the second and more direct variant, the attacker defines an inline
 `IHttpHandler` directly within the `web.config` file. The handler's code is
 embedded in the configuration XML and executes when a matching request arrives.
-In this case, the `web.config` file is the sole file the attacker must write â€”
+In this case, the `web.config` file is the sole file the attacker must write —
 no separate script file is needed.
 
 Both variants share a critical prerequisite operation: writing a `web.config`
@@ -423,11 +435,11 @@ making new or modified `web.config` files a high-fidelity detection signal.
 
 The DDM for Procedure C shows the Write Config operation feeding into Match
 Handler, reflecting the fact that it modifies how handler matching behaves. In
-the inline handler variant, Write Config is the sole prerequisite operation â€”
+the inline handler variant, Write Config is the sole prerequisite operation —
 no separate Create New File or Modify Existing File operation is needed. In the
 custom handler mapping variant, Write Config is accompanied by a file operation
 to place the web shell with an unusual extension. The downstream pipeline
-(Route Request â†’ Match Handler â†’ Execute Code) is structurally the same as in
+(Route Request → Match Handler → Execute Code) is structurally the same as in
 Procedures A and B, but Match Handler now operates against the attacker-defined
 handler mappings rather than the server defaults. The post-execution branch
 between process spawn and .NET API calls remains the same, as post-execution
