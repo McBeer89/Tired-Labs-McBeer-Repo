@@ -159,7 +159,7 @@ The tool generates a markdown report containing:
 
 ### Relevance Scoring
 
-Each source link is scored 0-100% based on how likely it is to contain substantive content about the technique. Scoring factors include whether the technique ID or name appears in the page title, description, URL, and whether the domain is cited by MITRE's own references. Results are labeled:
+Each source link is scored 0-100% based on how likely it is to contain substantive content about the technique. Scoring factors include whether the technique ID or name appears in the page title, description, URL, and whether the domain is cited by MITRE's own references. Results from category-scoped queries (e.g., Sigma rules found via `site:github.com/SigmaHQ/sigma`) receive a relevance boost since they are already pre-filtered to be on-topic. Results are labeled:
 
 - **Strong Match** (50%+) - Technique ID and name prominently featured
 - **Likely Relevant** (25-49%) - Clear technique references found
@@ -171,9 +171,14 @@ Each source link is scored 0-100% based on how likely it is to contain substanti
 The tool uses a two-tier search approach to balance depth and breadth:
 
 - **Tier 1** — Individual targeted queries for high-value domains (configured in `tier1_domains`). Each domain gets its own `"<technique_name>" site:<domain>` query with max 2 results. This ensures coverage of sources like thedfirreport.com and mandiant.com that were previously missed in batched queries.
-- **Tier 2** — Batched OR queries for remaining domains (groups of 5 per query), providing broad sweep coverage across the full domain list.
+- **Tier 2** — Batched OR queries for remaining domains (groups of 5 per query), running up to 3 queries per batch: one category-specific query (most targeted, runs first) plus two shared common queries. Categories whose specific query includes a built-in `site:` scope (e.g., `sigma_rules` scoped to `github.com/SigmaHQ/sigma`) run that query directly instead of wrapping it in an additional site filter.
 
-Tier-1 results sort first within each category.
+Tier-1 results sort first within each category. Use `--verbose` to see per-category breakdowns:
+
+```
+  security_research: 6 tier-1 + 4 tier-2 = 14 results (deduped to 10)
+  sigma_rules: 0 tier-1 + 3 tier-2 = 3 results
+```
 
 ### Source Type Tags
 
@@ -188,6 +193,15 @@ Results with no clear signal receive no tag.
 ### Smart Enrichment
 
 After gathering search results, the tool selectively fetches page metadata only for results that need it. Results that already have adequate title and description (>100 chars) from the search engine are skipped. PDFs are always skipped (no extractable HTML metadata). Video platform URLs are always enriched (DuckDuckGo titles are frequently garbled). Progress output shows how many results were enriched vs. skipped.
+
+### Deduplication
+
+Search results are deduplicated across categories using multiple passes:
+
+1. **GitHub fork dedup** — Two GitHub URLs pointing to the same file path in different repos are treated as duplicates. The result from the most canonical org is kept (priority: redcanaryco > SigmaHQ > mitre-attack > elastic > splunk > microsoft > neo23x0).
+2. **Technique directory dedup** — GitHub forks that contain the same ATT&CK technique directory but with different filenames (e.g., `T1505.003.md` vs `T1505.003.yaml`) are also caught, as long as they come from different orgs.
+3. **Academic paper dedup** — Same arXiv or IEEE paper in PDF vs HTML format.
+4. **Title dedup** — Results with >90% title similarity (catches republished or syndicated content).
 
 ### Search Result Caching
 
@@ -276,7 +290,7 @@ trr-source-scraper/
 │   └── atomic_red_team.py   # Atomic Red Team YAML fetcher
 ├── utils/
 │   ├── __init__.py
-│   ├── helpers.py           # Rate limiting, URL validation, relevance scoring
+│   ├── helpers.py           # Rate limiting, URL validation, relevance scoring, deduplication
 │   └── cache.py             # File-based JSON cache with TTL
 ├── config/
 │   └── sources.json         # Trusted sources, search settings, TRR repo config
