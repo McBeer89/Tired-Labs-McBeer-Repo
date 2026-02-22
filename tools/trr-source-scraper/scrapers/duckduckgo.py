@@ -240,6 +240,64 @@ class DuckDuckGoScraper:
         return all_results
 
 
+# URL path segments that indicate generic Microsoft reference docs, not security content
+_MSLEARN_NOISE_PATHS = [
+    '/powershell/module/',
+    '/powershell/scripting/',
+    '/dotnet/api/',
+    '/sql/relational-databases/',
+    '/visualstudio/',
+    '/office/vba/',
+]
+
+# GitHub path patterns that indicate non-rule content in the SigmaHQ repo
+_SIGMA_NOISE_PATTERNS = [
+    '/pull/',
+    '/issues/',
+    '/other/',
+    '/tests/',
+    'indexes/',
+]
+
+
+def _is_offtopic_mslearn(url: str, technique_name: str) -> bool:
+    """
+    Return True if the URL is a learn.microsoft.com generic reference page
+    unrelated to security. Skipped entirely for PowerShell-specific techniques.
+    """
+    if 'learn.microsoft.com' not in url:
+        return False
+    if 'powershell' in technique_name.lower():
+        return False
+    url_lower = url.lower()
+    for noise_path in _MSLEARN_NOISE_PATHS:
+        if noise_path in url_lower:
+            return True
+    return False
+
+
+def _is_non_english_mslearn(url: str) -> bool:
+    """Return True if the URL is a non-English Microsoft Learn or Docs page."""
+    url_lower = url.lower()
+    if 'learn.microsoft.com/' not in url_lower and 'docs.microsoft.com/' not in url_lower:
+        return False
+    locale_match = re.search(r'microsoft\.com/([a-z]{2}-[a-z]{2})/', url_lower)
+    if locale_match and locale_match.group(1) != 'en-us':
+        return True
+    return False
+
+
+def _is_noise_sigma_result(url: str) -> bool:
+    """Return True if the URL is non-rule content from the SigmaHQ GitHub repo."""
+    if 'github.com/SigmaHQ/sigma' not in url:
+        return False
+    url_lower = url.lower()
+    for pattern in _SIGMA_NOISE_PATTERNS:
+        if pattern.lower() in url_lower:
+            return True
+    return False
+
+
 def _build_queries(
     technique_id: str,
     technique_name: str,
@@ -269,7 +327,7 @@ def _build_queries(
 
     category_specific = {
         'security_research': [f'"{short_name}" attack analysis write-up{extra}'],
-        'microsoft_docs': [f'"{short_name}" site:learn.microsoft.com OR site:techcommunity.microsoft.com{extra}'],
+        'microsoft_docs': [f'"{short_name}" site:docs.microsoft.com OR site:msdn.microsoft.com OR site:technet.microsoft.com{extra}'],
         'conferences': [f'"{short_name}" presentation talk defcon OR blackhat{extra}'],
         'github': [f'"{technique_id}" detection rule{extra}'],
         'sigma_rules': [f'site:github.com/SigmaHQ/sigma "{technique_id}"'],
@@ -342,6 +400,10 @@ def search_technique_sources(
     global_seen_urls = set()
     tier1_query_count = 0
     tier2_query_count = 0
+    filtered_mslearn = 0
+    filtered_nonenglish = 0
+    filtered_index = 0
+    filtered_sigma = 0
 
     for category_name, category_config in categories.items():
         category_results = []
@@ -415,6 +477,22 @@ def search_technique_sources(
             if is_generic_landing_page(url):
                 if verbose:
                     print(f"  [filter] Skipped generic landing page: {url}")
+                filtered_index += 1
+                continue
+            if _is_offtopic_mslearn(url, technique_name):
+                if verbose:
+                    print(f"  [filter] Skipped off-topic MS Learn page: {url}")
+                filtered_mslearn += 1
+                continue
+            if _is_non_english_mslearn(url):
+                if verbose:
+                    print(f"  [filter] Skipped non-English MS Learn page: {url}")
+                filtered_nonenglish += 1
+                continue
+            if category_name == 'sigma_rules' and _is_noise_sigma_result(url):
+                if verbose:
+                    print(f"  [filter] Skipped noise Sigma result: {url}")
+                filtered_sigma += 1
                 continue
             seen.add(url)
             unique_results.append(r)
@@ -432,5 +510,9 @@ def search_technique_sources(
 
     if verbose:
         print(f"  [search] Total queries: {tier1_query_count} focused + {tier2_query_count} sweep")
+        if any([filtered_mslearn, filtered_nonenglish, filtered_index, filtered_sigma]):
+            print(f"  [filter summary] {filtered_mslearn} off-topic MS Learn, "
+                  f"{filtered_nonenglish} non-English, {filtered_index} index/landing pages, "
+                  f"{filtered_sigma} Sigma noise")
 
     return results

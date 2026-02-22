@@ -103,7 +103,7 @@ python trr_scraper.py T1003.006 --quiet
 | `--no-enrich` | - | Skip fetching page metadata (saves as `_quick_scan.md`) |
 | `--no-ddg` | - | Skip DuckDuckGo search entirely (saves as `_offline_scan.md`) |
 | `--extra-terms` | `-e` | Additional search terms appended to every query |
-| `--json` | - | Also write a JSON file with all raw collected data |
+| `--json` | - | Also write a JSON v1.4 file with all collected data (normalized, consistent field shapes) |
 | `--no-cache` | - | Bypass search result cache and force fresh queries |
 | `--validate-links` | - | Check link liveness via HEAD requests |
 | `--trr-repo` | - | Override GitHub repo for TRR/DDM lookup |
@@ -171,7 +171,7 @@ Each source link is scored 0-100% based on how likely it is to contain substanti
 The tool uses a two-tier search approach to balance depth and breadth:
 
 - **Tier 1** — Individual targeted queries for high-value domains (configured in `tier1_domains`). Each domain gets its own `"<technique_name>" site:<domain>` query with max 2 results. This ensures coverage of sources like thedfirreport.com and mandiant.com that were previously missed in batched queries.
-- **Tier 2** — Batched OR queries for remaining domains (groups of 5 per query), running up to 3 queries per batch: one category-specific query (most targeted, runs first) plus two shared common queries. Categories whose specific query includes a built-in `site:` scope (e.g., `sigma_rules` scoped to `github.com/SigmaHQ/sigma`) run that query directly instead of wrapping it in an additional site filter.
+- **Tier 2** — Batched OR queries for remaining domains (groups of 5 per query), running up to 3 queries per batch: one category-specific query (most targeted, runs first) plus two shared common queries. Categories whose specific query includes a built-in `site:` scope (e.g., `sigma_rules` scoped to `github.com/SigmaHQ/sigma`) run that query directly instead of wrapping it in an additional site filter. The `microsoft_docs` category-specific tier-2 query targets legacy Microsoft domains (`docs.microsoft.com`, `msdn.microsoft.com`, `technet.microsoft.com`) since `learn.microsoft.com` and `techcommunity.microsoft.com` are already covered by tier-1.
 
 Tier-1 results sort first within each category. Use `--verbose` to see per-category breakdowns:
 
@@ -202,6 +202,25 @@ Search results are deduplicated across categories using multiple passes:
 2. **Technique directory dedup** — GitHub forks that contain the same ATT&CK technique directory but with different filenames (e.g., `T1505.003.md` vs `T1505.003.yaml`) are also caught, as long as they come from different orgs.
 3. **Academic paper dedup** — Same arXiv or IEEE paper in PDF vs HTML format.
 4. **Title dedup** — Results with >90% title similarity (catches republished or syndicated content).
+
+### Result Quality Filters
+
+After deduplication, a set of URL-based filters removes noise that passes the relevance scorer but isn't useful research material:
+
+| Filter | What it drops |
+|--------|---------------|
+| Off-topic MS Learn | `learn.microsoft.com` pages whose URL path indicates generic reference docs: `/powershell/module/`, `/dotnet/api/`, `/sql/relational-databases/`, `/visualstudio/`, `/office/vba/`, `/powershell/scripting/`. Automatically skipped for PowerShell-specific techniques (e.g., T1059.001) so cmdlet docs are preserved where relevant. |
+| Non-English Microsoft pages | Any `learn.microsoft.com` or `docs.microsoft.com` URL whose locale segment is not `/en-us/` (e.g., `/hu-hu/`, `/ja-jp/`). |
+| Blog index pages | URLs containing `/author/`, `/tag/`, `/category/`, `/page/`, `/topics/`, or `/archives/` — listing pages rather than content. |
+| Sigma noise | Non-rule content from `github.com/SigmaHQ/sigma`: pull request discussions (`/pull/`), issue threads (`/issues/`), coverage maps (`/other/`), test fixtures (`/tests/`), index files (`indexes/`). |
+
+Use `--verbose` to see which URLs were filtered and a per-run summary:
+
+```
+  [filter] Skipped off-topic MS Learn page: learn.microsoft.com/en-us/powershell/module/...
+  [filter] Skipped non-English MS Learn page: learn.microsoft.com/hu-hu/azure/...
+  [filter summary] 6 off-topic MS Learn, 1 non-English, 1 index/landing pages, 2 Sigma noise
+```
 
 ### Search Result Caching
 
@@ -275,6 +294,52 @@ Add or modify trusted sources in the `trusted_sources` section:
   }
 }
 ```
+
+## JSON Output
+
+When `--json` is passed, a `<id>_<scan_mode>.json` file is written alongside the markdown report. As of v1.4, all fields have guaranteed shapes — the consumer does not need to null-check nested accesses.
+
+### Top-Level Fields
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `technique_id` | string | e.g., `"T1003.006"` |
+| `technique_name` | string | e.g., `"DCSync"` |
+| `platform` | string | Value of `--platform`, or `""` if not set |
+| `generated` | string | ISO-8601 timestamp |
+| `report_version` | string | Schema version (current: `"1.4"`) |
+| `scan_mode` | string | `"research_brief"`, `"quick_scan"`, or `"offline_scan"` |
+| `technique_info` | object | Never null — defaults to empty strings/lists if MITRE fetch failed |
+| `existing_trrs` | array | Matched TRR entries |
+| `existing_ddms` | array | Matched DDM entries |
+| `atomic_tests` | array | Atomic Red Team test cases |
+| `search_results` | object | Category name → array of normalized result objects |
+
+### Normalized Search Result Fields
+
+Every result in `search_results` always contains:
+
+```json
+{
+  "title": "string",
+  "url": "string",
+  "description": "string",
+  "domain": "string",
+  "date": "string or null",
+  "relevance_score": 0.0,
+  "link_status": "string or null",
+  "source_type": "Detection | Threat Intel | Reference | null"
+}
+```
+
+`domain` is derived from the URL if not provided by the scraper. `date`, `link_status`, and `source_type` are null when not determined (e.g., `--no-enrich` skips link status; results with no strong signal have no source type).
+
+### Schema Versions
+
+| Version | Change |
+|---------|--------|
+| 1.4 | Normalized all collection fields; `technique_info` guaranteed non-null; `platform` added to top level |
+| 1.3 | Source type tags added to search results |
 
 ## Project Structure
 

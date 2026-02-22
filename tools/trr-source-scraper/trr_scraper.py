@@ -53,7 +53,25 @@ from utils import (
     get_category_for_domain,
 )
 
-REPORT_VERSION = "1.3"
+# v1.4: Normalized JSON output — all fields guaranteed present with
+#        consistent types (strings default to "", lists to [], numbers to 0).
+#        technique_info is never null. Search results always have domain,
+#        relevance_score, and source_type fields.
+REPORT_VERSION = "1.4"
+
+DEFAULT_TECHNIQUE_INFO = {
+    "id": "",
+    "url": "",
+    "name": "",
+    "description": "",
+    "tactics": [],
+    "platforms": [],
+    "data_sources": [],
+    "defense_bypassed": [],
+    "permissions_required": [],
+    "effective_permissions": [],
+    "references": [],
+}
 
 # Platform keywords for --platform filtering (checked case-insensitively)
 PLATFORM_KEYWORDS = {
@@ -597,6 +615,60 @@ def _classify_source_type(result: Dict) -> Optional[str]:
             return 'Reference'
 
     return None
+
+
+def _normalize_search_result(result: Dict) -> Dict:
+    """Ensure every search result has a consistent set of fields."""
+    return {
+        "title": result.get("title", ""),
+        "url": result.get("url", ""),
+        "description": result.get("description", ""),
+        "domain": result.get("domain", extract_domain(result.get("url", ""))),
+        "date": result.get("date"),
+        "relevance_score": result.get("relevance_score", 0.0),
+        "link_status": result.get("link_status"),
+        "source_type": _classify_source_type(result),
+    }
+
+
+def _normalize_atomic_test(test: Dict) -> Dict:
+    """Ensure every atomic test has a consistent set of fields."""
+    return {
+        "name": test.get("name", "Unnamed Test"),
+        "description": test.get("description", ""),
+        "platforms": test.get("platforms", []),
+        "executor": test.get("executor", "unknown"),
+        "auto_generated_guid": test.get("auto_generated_guid", ""),
+        "github_url": test.get("github_url", ""),
+        "command": test.get("command", ""),
+        "cleanup_command": test.get("cleanup_command", ""),
+        "input_arguments": test.get("input_arguments", []),
+    }
+
+
+def _normalize_existing_trr(trr: Dict) -> Dict:
+    """Ensure every existing TRR entry has a consistent set of fields."""
+    return {
+        "file_name": trr.get("file_name", ""),
+        "file_path": trr.get("file_path", ""),
+        "trr_id": trr.get("trr_id", ""),
+        "title": trr.get("title", ""),
+        "techniques": trr.get("techniques", []),
+        "match_type": trr.get("match_type", ""),
+        "match_score": trr.get("match_score", 0),
+        "github_url": trr.get("github_url", ""),
+        "references": trr.get("references", []),
+    }
+
+
+def _normalize_existing_ddm(ddm: Dict) -> Dict:
+    """Ensure every existing DDM entry has a consistent set of fields."""
+    return {
+        "file_name": ddm.get("file_name", ""),
+        "file_path": ddm.get("file_path", ""),
+        "technique_id": ddm.get("technique_id", ""),
+        "github_url": ddm.get("github_url", ""),
+    }
 
 
 def _render_search_result(
@@ -1187,17 +1259,33 @@ def main():
     if args.json:
         json_base = args.trr_id if args.trr_id else technique_id
         json_file = output_dir / f"{json_base}_{filename_suffix}.json"
+
+        # Normalize technique_info — guarantee consistent shape even on fetch failure
+        safe_technique_info = dict(technique_info) if technique_info else {}
+        for key, default in DEFAULT_TECHNIQUE_INFO.items():
+            safe_technique_info.setdefault(key, default)
+
+        # Normalize all collection types for consistent downstream consumption
+        normalized_results = {
+            category: [_normalize_search_result(r) for r in results]
+            for category, results in search_results.items()
+        }
+        normalized_tests = [_normalize_atomic_test(t) for t in atomic_tests]
+        normalized_trrs = [_normalize_existing_trr(t) for t in existing_trrs]
+        normalized_ddms = [_normalize_existing_ddm(d) for d in existing_ddms]
+
         raw_data = {
             "technique_id": technique_id,
             "technique_name": technique_name,
+            "platform": args.platform or "",
             "generated": datetime.now().isoformat(),
             "report_version": REPORT_VERSION,
             "scan_mode": filename_suffix,
-            "technique_info": technique_info,
-            "existing_trrs": existing_trrs,
-            "existing_ddms": existing_ddms,
-            "atomic_tests": atomic_tests,
-            "search_results": search_results,
+            "technique_info": safe_technique_info,
+            "existing_trrs": normalized_trrs,
+            "existing_ddms": normalized_ddms,
+            "atomic_tests": normalized_tests,
+            "search_results": normalized_results,
         }
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(raw_data, f, indent=2, ensure_ascii=False)

@@ -113,6 +113,11 @@ def normalize_technique_id(technique_id: str) -> str:
     return technique_id
 
 
+_BLOG_INDEX_PATTERNS = [
+    '/author/', '/tag/', '/category/', '/page/', '/topics/', '/archives/',
+]
+
+
 def is_generic_landing_page(url: str) -> bool:
     """
     Return True if the URL points to a generic landing/index page
@@ -134,6 +139,12 @@ def is_generic_landing_page(url: str) -> bool:
         segments = [s for s in path.split('/') if s]
         if len(segments) <= 1 and not parsed.query:
             return True
+
+        # Blog author/tag/index pages are listings, not content
+        path_lower = path.lower()
+        for pattern in _BLOG_INDEX_PATTERNS:
+            if pattern in path_lower:
+                return True
 
         return False
     except Exception:
