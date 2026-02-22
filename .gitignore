@@ -39,11 +39,11 @@ Thumbs.db
 
 # AI assistant settings (local, machine-specific)
 .claude/
+CLAUDE.md
 .clinerules*
 
 # Tool backups
 *-backup-*/
 
 # Scraper cache and generated output
-tools/trr-source-scraper/output/.cache/
-tools/trr-source-scraper/output/*.md
+tools/trr-source-scraper/output/
