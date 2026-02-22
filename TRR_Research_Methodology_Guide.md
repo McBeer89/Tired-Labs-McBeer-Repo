@@ -1,28 +1,39 @@
 # TRR Research Methodology — A Practical Guide
 
-**Based on:** VanVleet's Detection Engineering Methodology (TIRED Labs)
+**Based on:** VanVleet's Threat Detection Engineering Methodology (TIRED Labs)
 **Purpose:** A step-by-step process for researching any attack technique and
 producing a submission-quality Technique Research Report (TRR) with Detection
 Data Models (DDMs).
-**Audience:** Entry-level detection engineers or anyone new to the methodology.
+**Audience:** Anyone new to the methodology — detection engineers, threat
+hunters, red teamers, intelligence analysts, or incident responders.
 
 ---
 
 ## Why TRRs?
 
-A detection query captures very little of the reasoning behind it — which
-telemetry was chosen and why, which procedures are covered, what noise was tuned
-out, what trade-offs were made. These decisions are environment-specific, and the
-details that informed them are not preserved in the query itself.
+Attack techniques abuse complex technical systems, and understanding exactly how
+they work requires deep research. But that research is rarely captured in a
+reusable way. Detection queries, hunt hypotheses, emulation scripts, and IR
+runbooks each capture a fraction of the underlying analysis — and all are
+environment-specific.
 
-**A TRR is the lossless capture.** It preserves the complete research, analysis,
-DDM, and rationale so that any detection engineer in any environment can make
-informed decisions for their own deployment. A detection query is lossy — a TRR
-is not.
+**A TRR is the lossless, discipline-neutral capture.** It preserves the complete
+research, analysis, DDM, and procedure identification so that any security team
+in any environment can use it as the foundation for their own work. A TRR
+documents the technique; teams document their response.
+
+TIRED stands for **T**hreat **I**ntelligence, **R**esponse, **E**mulation, and
+**D**etection. A TRR serves all four disciplines equally:
+
+- **Threat Intelligence** — Understand technique mechanics for reporting
+- **Red Team / Emulation** — Know what to execute and how procedures differ
+- **Detection Engineering** — Identify what to monitor and where blind spots
+  exist
+- **Incident Response** — Know what artifacts to look for and what the
+  execution chain looks like
 
 This is why TRR completeness and accuracy matter. The TRR is the authoritative
-source of truth about a technique. Everything downstream — detections, emulation
-plans, response playbooks — derives from it.
+source of truth about a technique. Everything downstream derives from it.
 
 ---
 
@@ -30,8 +41,9 @@ plans, response playbooks — derives from it.
 
 ### What You Need
 
-- A technique to research (a MITRE ATT&CK ID, an Azure Threat Research Matrix
-  ID, a known attack name, or a behavior you've observed)
+- A MITRE ATT&CK technique or sub-technique to research (additional mappings
+  to other matrices like the Azure Threat Research Matrix can be noted in the
+  TRR metadata)
 - Access to the [TIRED Labs TRR spec] for format requirements
 - Access to the [Arrows App] for building DDMs
 - A text editor for your research notes and TRR draft
@@ -234,25 +246,6 @@ Combine into a single TRR when:
 **Checkpoint:** Is your scope clear and defensible? Have you documented what's
 in and what's out, with rationale for each?
 
-### Step 4: Write It Down
-
-Create a research notes file (markdown works great). Document everything you've
-learned so far, organized by topic. Include:
-
-- Technique summary
-- Scope statement and exclusion table
-- Essential constraints table
-- Architecture of the affected system
-- Key components and how they interact
-- Security-relevant details (processes, permissions, file paths, APIs)
-- References with links for everything you cite
-
-**This file is your working memory.** You'll come back to it constantly. Keep
-it updated as you learn more.
-
-**Checkpoint:** Could another researcher read your notes and understand the
-technique without needing to do their own research? If not, fill in the gaps.
-
 ---
 
 ## Phase 2: Build the Detection Data Model
@@ -260,7 +253,7 @@ technique without needing to do their own research? If not, fill in the gaps.
 **Goal:** Map out every essential operation in the technique and identify where
 those operations can be observed.
 
-### Step 5: Map Your Initial Understanding
+### Step 4: Map Your Initial Understanding
 
 Open the [Arrows App] and start placing operations.
 
@@ -284,8 +277,9 @@ Open the [Arrows App] and start placing operations.
 - Use **arrows** to show flow from one operation to the next
 - Use **downward arrows** for lower layers of abstraction (implementation
   details of the operation above)
-- Use **green circles** for source/attacker machine operations
-- Use **blue circles** for target machine operations
+- For multi-machine techniques, you can optionally use color to distinguish
+  source vs. target operations (e.g., green for attacker, blue for target),
+  but most DDMs use plain black circles
 - Add **tags** for specific details (process names, APIs, file paths, ports)
 
 **Structural conventions:**
@@ -313,7 +307,7 @@ to refine it.
 **Checkpoint:** Does your diagram have at least the major operations you
 currently understand? Are there any you're unsure about? Mark those with "??".
 
-### Step 6: Iterative Deepening (The Most Important Step)
+### Step 5: Iterative Deepening (The Most Important Step)
 
 For EVERY operation in your DDM, ask yourself these questions:
 
@@ -346,28 +340,7 @@ step to take hours or even days for a complex technique. Don't rush it.
 **Checkpoint:** Can you explain every operation in your DDM in detail? Are
 there any question marks left? If yes, keep going.
 
-### Step 7: Classify Every Element
-
-Go through your entire DDM and classify each element using the DDM inclusion
-test:
-
-| Classification | Definition | In DDM? |
-|---|---|---|
-| **Essential + Immutable + Observable** | Must happen, can't be changed, can be seen | ✅ Include |
-| **Essential + Immutable + NOT Observable** | Must happen, can't be changed, but no telemetry exists | ✅ Include (note the gap) |
-| **Optional** | Can be skipped without breaking the technique | ❌ Remove |
-| **Tangential** | Attacker-controlled (tools, filenames, flags) | ❌ Remove |
-
-**Common mistakes at this step:**
-- Including specific tool names as operations (tangential)
-- Including command-line parameters (tangential)
-- Including specific file names the attacker chose (tangential)
-- Keeping optional steps because they're "interesting" (remove them — they
-  make it harder to identify distinct procedures later)
-- Modeling delivery methods as operations (tangential — how the attacker got
-  the file there is separate from what the file does)
-
-### Step 8: Add Telemetry
+### Step 6: Add Telemetry
 
 For each remaining operation, identify what could observe it. The available
 telemetry depends on the platform:
@@ -416,14 +389,24 @@ telemetry depends on the platform:
 ```
 
 Add telemetry as tags on the relevant operation nodes. If an operation has NO
-known telemetry, tag it "No direct telemetry" — that's a detection gap worth
-documenting.
+known telemetry, tag it "No direct telemetry" — that's a gap worth documenting.
+
+**Telemetry label convention:** Use descriptive labels that include both the
+event ID and event name:
+
+| ✅ Good | ❌ Bad |
+|---------|--------|
+| Sysmon 1 (ProcessCreate) | Sysmon 1 |
+| Sysmon 11 (FileCreate) | Sysmon EID 11 |
+| Win 4688 (ProcessCreate) | Event 4688 |
+| Win 4663 (SACL) | Windows Security 4663 |
+| IIS W3C | IIS Logs |
 
 **Important:** Put telemetry on the operation it DIRECTLY observes, not on a
 nearby operation. Sysmon 1 (Process Create) goes on the "Spawn Process" node,
 not on the "Execute Code" node.
 
-### Step 9: Find Alternate Paths
+### Step 7: Find Alternate Paths
 
 For EVERY operation, ask: **"Is there another way to do this?"**
 
@@ -442,22 +425,11 @@ If you find an alternate path, apply the procedure-defining question:
   → **No:** This is the same procedure with different implementation details
     (tangential). Note it but don't create a new path.
 
-Examples:
-- Using a different file extension (.asp vs .aspx) with the same handler type
-  → **same procedure** (extension is tangential)
-- Modifying web.config to change handler behavior → **different procedure**
-  (introduces a new essential operation: Write Config)
-- Using a different tool to upload the file → **same procedure** (delivery
-  method is tangential)
-- Using `iptables` vs `nft` vs `ufw` to disable a firewall → depends on
-  whether the essential operations differ (do they call different kernel
-  interfaces, or do they converge at the same netfilter operation?)
-
 If new paths are discovered:
 - Add alternate paths to the DDM
 - Use branching to show different options
 - Label branches with conditions
-- Apply Steps 6-8 to the new operations
+- Apply Steps 5-6 to the new operations
 
 **Checkpoint:** Have you explored every realistic alternate path? Have you
 asked "is there another way?" for every single operation?
@@ -468,23 +440,7 @@ asked "is there another way?" for every single operation?
 
 **Goal:** Determine how many distinct execution paths exist in your DDM.
 
-### Step 10: Trace the Paths
-
-Look at your DDM and trace every possible path from start to finish.
-
-**Key principle:** A procedure is a distinct execution path through essential
-operations. Two different tools that execute the same operations = SAME
-procedure. Two different operation paths = DIFFERENT procedures.
-
-For each path:
-1. Trace it from the first operation to the last
-2. Write down the sequence of operations
-3. Compare it to every other path
-4. If two paths share every essential operation, they're the same procedure
-5. If two paths diverge at any essential operation, they're different
-   procedures
-
-### Step 11: Assign Procedure IDs
+### Step 8: Assign Procedure IDs
 
 For each distinct procedure:
 
@@ -517,7 +473,7 @@ articulate exactly what essential operation(s) make each procedure unique.
 **Goal:** Make sure your model is complete, accurate, and useful before writing
 the TRR.
 
-### Step 12: Run the Checklists
+### Step 9: Run the Checklists
 
 **Completeness Check:**
 ```
@@ -540,18 +496,9 @@ the TRR.
 □ DDM follows structural conventions (prerequisites, sub-operations, branches)
 ```
 
-**Utility Check:**
-```
-□ A detection engineer could build detections from this
-□ A red teamer could understand how to execute the technique
-□ No environment-specific assumptions are baked in
-□ Both common and uncommon procedures are covered
-□ Detection gaps (operations with no telemetry) are documented
-```
-
 If any check fails, go back and fix it before proceeding.
 
-### Step 13: Create Per-Procedure DDM Exports
+### Step 10: Create Per-Procedure DDM Exports
 
 Once the master DDM is validated, create the export set:
 
@@ -567,13 +514,15 @@ and each procedure's specific path at a glance.
 
 **Naming convention:**
 ```
-Master:      ddm_trr0000_platform_all.json  (Arrows app JSON)
-Procedure A: trr0000_a.png                  (red arrows on Proc A path)
-Procedure B: trr0000_b.png                  (red arrows on Proc B path)
-Procedure C: trr0000_c.png                  (red arrows on Proc C path)
+Master:      ddm_trr####_platform.json     (Arrows app JSON, all black arrows)
+             ddm_trr####_platform.png      (master image)
+Procedure A: trr####_platform_a.json       (Arrows app JSON, red arrows)
+             trr####_platform_a.png        (referenced in TRR)
+Procedure B: trr####_platform_b.json/.png
+Procedure C: trr####_platform_c.json/.png
 ```
 
-### Step 14: Get a Second Opinion
+### Step 11: Get a Second Opinion
 
 If possible, have someone else review your DDM and research notes. Fresh eyes
 catch things you've become blind to. Ask them:
@@ -584,183 +533,11 @@ catch things you've become blind to. Ask them:
 
 ---
 
-## Phase 5: Detection Strategy
+## Next: Write the TRR
 
-**Goal:** Identify optimal detection points before writing the TRR. This
-analysis informs the procedure narratives.
-
-### Step 15: Identify Optimal Detection Points
-
-Using the completed DDM, find the best telemetry for detection:
-
-1. **Look for convergence points** — operations shared by multiple or all
-   procedures. A detection at a convergence point covers more of the
-   technique's attack surface with fewer detections.
-
-2. **Prefer telemetry closer to the END of the operation chain.** Later
-   operations are harder for attackers to avoid and often produce
-   higher-fidelity signals.
-
-3. **For each candidate detection point, assess:**
-   - How many procedures does this cover?
-   - What telemetry sources are available here?
-   - How noisy will this be? (What does benign activity look like at this
-     operation?)
-   - Can an attacker realistically avoid this operation?
-
-4. **If no single point covers all procedures,** identify a group of
-   detections that collectively cover all procedures.
-
-5. **Document known blind spots** — procedures or operations where no
-   practical telemetry exists. Knowing your gaps is as valuable as knowing
-   your coverage.
-
-**Checkpoint:** Does your detection strategy cover all identified procedures?
-Are blind spots documented?
-
----
-
-## Phase 6: Write the TRR
-
-**Goal:** Produce a submission-quality TRR that follows the TIRED Labs format.
-
-### Step 16: Write the Metadata
-
-```markdown
-# Technique Name
-
-## Metadata
-
-| Key          | Value              |
-|--------------|--------------------|
-| ID           | TRR0000            |
-| Procedures   | TRR0000.WIN.A, TRR0000.WIN.B |
-| External IDs | T####.###, AZT###  |
-| Tactics      | Tactic Name        |
-| Platforms    | Windows            |
-| Contributors | Your Name          |
-```
-
-**TRR Name guidance:** The name should be specific and descriptive. It does not
-have to mirror ATT&CK naming — use the most accurate name possible. Well-known
-names can be included in parentheses.
-
-Examples:
-- "Roasting Kerberos Service Tickets (Kerberoasting)"
-- "DC Synchronization Attack (DCSync)"
-- "File-Based Web Shell Execution via IIS"
-- "WMI Event Subscription"
-
-Add a **Scope Statement** if your TRR doesn't cover the entire technique
-(e.g., only one platform, only one variant). Be explicit about what's in
-scope and what's out.
-
-### Step 17: Write the Technique Overview
-
-This is the **leadership-readable summary.** 1-2 paragraphs. No jargon.
-Anyone in cybersecurity should be able to understand it.
-
-After reading this section, the reader should know:
-- What the technique is
-- How it's generally used
-- Why adversaries use it
-
-### Step 18: Write the Technical Background
-
-This is the **bulk of the report.** It should contain everything a reader
-needs to understand the technique without going to external sources.
-
-Use subheadings. Cover:
-- The technology being abused (architecture, components, protocols)
-- How the legitimate system works
-- What security controls exist
-- Why the technique is effective
-- Any technical details common to multiple procedures
-
-**Important:** This section does NOT contain execution steps or procedure
-specifics. Those go in the procedure narratives. The technical background gives
-the reader the foundation to understand ALL procedures.
-
-### Step 19: Write the Procedure Narratives
-
-For each procedure, write a **narrative** (not a step-by-step list). Cover:
-- Prerequisites
-- How the execution works (trace through the DDM in prose)
-- What makes this procedure distinct
-- Key detection opportunities
-- Any variations or edge cases
-
-After each narrative, include:
-- The per-procedure DDM image (with red arrows on the active path)
-- A short paragraph describing what the DDM shows, calling out interesting
-  nodes, detection opportunities, and gaps
-
-### Step 20: Complete the Remaining Sections
-
-```markdown
-## Available Emulation Tests
-
-| ID             | Link             |
-|----------------|------------------|
-| TRR0000.WIN.A  | [Link if known]  |
-| TRR0000.WIN.B  | [Link if known]  |
-
-## References
-
-- [Reference Name]: URL
-```
-
-**Emulation tests:** It is not required to search out emulation tests, but if
-you are aware of any, include them. The most common sources are:
-
-- **Atomic Red Team** (Red Canary) — the largest open-source library with
-  1,700+ tests covering hundreds of ATT&CK techniques across Windows, Linux,
-  macOS, and cloud platforms. This is often the first place to check.
-  Browse tests at: https://github.com/redcanaryco/atomic-red-team/tree/master/atomics/
-- **Stratus Red Team** (DataDog) — focused on cloud attack emulation (AWS,
-  Azure, GCP, Kubernetes)
-- **DVWA, WebGoat, etc.** — for web application techniques
-- **Custom scripts or POCs** from security researchers (often found on GitHub)
-- **Vendor-specific test suites** (if available for your platform)
-
-Emulation tests are useful for two purposes in TRR development:
-1. **Validating your DDM** — does your model cover the operations performed
-   by the test?
-2. **Helping detection engineers** — linking tests to specific procedures lets
-   them generate telemetry to validate their detections
-
-### Step 21: Final Review
-
-Read the entire TRR from start to finish as if you've never seen it before.
-Ask yourself:
-
-```
-□ Is the Technique Overview clear enough to email to leadership?
-□ Is the Technical Background complete enough to stand alone?
-□ Are the procedure narratives accurate and match the DDMs?
-□ Does each per-procedure DDM clearly show its active path (red arrows)?
-□ Are all references cited?
-□ Does the format match existing TRRs in the repository?
-□ Would I be confident submitting this?
-```
-
----
-
-## Quick Reference: Common Pitfalls
-
-| Pitfall | How to Avoid It |
-|---------|----------------|
-| **Tool-focused analysis** | Ask "what operation is this tool performing?" and model the operation, not the tool |
-| **Including optional operations** | For every operation ask "can the attacker skip this and still succeed?" If yes, remove it |
-| **Tangential elements in DDM** | If the attacker controls it (filenames, flags, tools, delivery methods), it's tangential — don't model it |
-| **Incomplete alternate paths** | For every operation ask "is there another way to do this?" |
-| **Assumptions hiding as facts** | If you can't cite a source for a technical claim, it might be an assumption. Verify it. |
-| **Rushing to the TRR** | The DDM must be solid before you write. A good DDM makes the TRR easy. A bad DDM makes it wrong. |
-| **Confusing procedures** | Same operations + different tools = same procedure. Different operations = different procedures. |
-| **Skipping the technology research** | You can't model what you don't understand. Phase 1 is the foundation for everything. |
-| **Prerequisites as pipeline steps** | File writes and other setup operations may happen days before execution. Model them as prerequisites feeding into the correct node, not as Step 1 in a linear chain. |
-| **Grouping telemetry on one node** | Each telemetry source goes on the specific operation it directly observes. Sysmon 1 goes on "Spawn Process," not on "Execute Code." |
-| **Skipping the scoping step** | Without explicit scoping, you'll either try to cover too much or leave ambiguity about what's included. Document it before building the DDM. |
+Your research is complete. Your DDM is validated. Your procedures are
+identified. Now write it up using `TECHNIQUE-RESEARCH-REPORT-OUTLINE.md` for
+the section-by-section structure and writing guidance.
 
 ---
 
@@ -771,32 +548,13 @@ Ask yourself:
 | Operations | Circles with "Action Object" naming |
 | Flow | Horizontal arrows (left to right) |
 | Abstraction layers | Downward arrows (higher to lower) |
-| Source machine ops | Green circles |
-| Target machine ops | Blue circles |
-| Shared ops | Black circles |
+| Source/target distinction (optional) | Green circles for source, blue for target — only when multi-machine context matters |
 | Details | Tags (process names, APIs, file paths, etc.) |
-| Telemetry | Tags on the operation they observe |
+| Telemetry | Tags on the operation they observe, using descriptive labels: `Sysmon 1 (ProcessCreate)` not `Sysmon 1` |
 | Unknowns | "??" marks (must be resolved before finalizing) |
 | Branch points | Multiple arrows leaving one operation, labeled with conditions |
 | Prerequisites | Separate nodes feeding into the pipeline (not inline) |
 | Active path (per-procedure) | Red arrows on the procedure's path; black for context |
-
----
-
-## Quick Reference: Platform Identifiers
-
-| Platform | ID | Notes |
-|----------|----|-------|
-| Windows | WIN | Most common; includes server and desktop |
-| Linux | LNX | May need to distinguish distros if operations differ |
-| macOS | MAC | Apple-specific security framework |
-| Active Directory | AD | On-prem AD-specific techniques |
-| Azure / Entra ID | AZR | Cloud and identity platform |
-| AWS | AWS | Amazon Web Services |
-| GCP | GCP | Google Cloud Platform |
-| Kubernetes | K8S | Container orchestration |
-| Network Devices | NET | Routers, switches, firewalls |
-| SaaS / Office 365 | SAS | Cloud application techniques |
 
 ---
 

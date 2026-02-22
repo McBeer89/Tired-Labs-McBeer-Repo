@@ -1,0 +1,325 @@
+{
+  "technique_id": "T1505.003",
+  "technique_name": "Server Software Component: Web Shell",
+  "platform": "",
+  "generated": "2026-02-21T21:25:28.366810",
+  "report_version": "1.4",
+  "scan_mode": "research_brief",
+  "technique_info": {
+    "id": "T1505.003",
+    "url": "https://attack.mitre.org/techniques/T1505/003",
+    "name": "Server Software Component: Web Shell",
+    "description": "Adversaries may backdoor web servers with web shells to establish persistent access to systems. A Web shell is a Web script that is placed on an openly accessible Web server to allow an adversary to access the Web server as a gateway into a network. A Web shell may provide a set of functions to execute or a command-line interface on the system that hosts the Web server.[1] In addition to a server-side script, a Web shell may have a client interface program that is used to talk to the Web server (e.g. China Chopper Web shell client).[2]",
+    "tactics": [
+      "Persistence"
+    ],
+    "platforms": [
+      "Linux",
+      "Network Devices",
+      "Windows",
+      "macOS"
+    ],
+    "data_sources": [
+      "DS0015",
+      "Application Log",
+      "Application Log Content",
+      "DS0022",
+      "File",
+      "File Creation",
+      "File Modification",
+      "DS0029",
+      "Network Traffic",
+      "Network Traffic Content",
+      "Network Traffic Flow",
+      "DS0009",
+      "Process",
+      "Process Creation"
+    ],
+    "defense_bypassed": [],
+    "permissions_required": [],
+    "effective_permissions": [],
+    "references": []
+  },
+  "existing_trrs": [],
+  "existing_ddms": [],
+  "atomic_tests": [
+    {
+      "name": "Web Shell Written to Disk",
+      "description": "This test simulates an adversary leveraging Web Shells by simulating the file modification to disk.\nIdea from APTSimulator.\ncmd.aspx source - https://github.com/tennc/webshell/blob/master/fuzzdb-webshell/asp/cmd.aspx",
+      "platforms": [
+        "windows"
+      ],
+      "executor": "command_prompt",
+      "auto_generated_guid": "0a2ce662-1efa-496f-a472-2fe7b080db16",
+      "github_url": "https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1505.003/T1505.003.yaml",
+      "command": "xcopy /I /Y \"#{web_shells}\" #{web_shell_path}",
+      "cleanup_command": "del #{web_shell_path}\\b.jsp /q >nul 2>&1\ndel #{web_shell_path}\\tests.jsp /q >nul 2>&1\ndel #{web_shell_path}\\cmd.aspx /q >nul 2>&1",
+      "input_arguments": [
+        {
+          "name": "web_shell_path",
+          "description": "The path to drop the web shell",
+          "default": "C:\\inetpub\\wwwroot"
+        },
+        {
+          "name": "web_shells",
+          "description": "Path of Web Shell",
+          "default": "PathToAtomicsFolder\\T1505.003\\src"
+        }
+      ]
+    }
+  ],
+  "search_results": {
+    "security_research": [
+      {
+        "title": "Advanced Web Shell Detection and Prevention | CrowdStrike",
+        "url": "https://www.crowdstrike.com/en-us/blog/advanced-web-shell-detection-and-prevention/",
+        "description": "For example, knowing an adversary only used the openly available tunneling web shell Suo5 indicates they gained tunneling capabilities but not process execution to a server.",
+        "domain": "www.crowdstrike.com",
+        "date": null,
+        "relevance_score": 0.35,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "Mo' Shells Mo' Problems - Deep Panda Web Shells - crowdstrike.com",
+        "url": "https://www.crowdstrike.com/en-us/blog/mo-shells-mo-problems-deep-panda-web-shells/",
+        "description": "A Web Shell is a file containing backdoor functionality written in a web scripting language such ASP, ASPX, PHP or JSP.",
+        "domain": "www.crowdstrike.com",
+        "date": null,
+        "relevance_score": 0.35,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "Web Shell Detection: Script Process Child of Common Web ... - Elastic",
+        "url": "https://www.elastic.co/docs/reference/security/prebuilt-rules/rules/windows/persistence_webshell_detection",
+        "description": "A web shell may provide a set of functions to execute or a command-line interface on the system that hosts the web server. This rule detects a web server process spawning script and command-line interface programs, potentially indicating attackers executing commands using the web shell .",
+        "domain": "www.elastic.co",
+        "date": null,
+        "relevance_score": 0.35,
+        "link_status": "ok",
+        "source_type": "Detection"
+      },
+      {
+        "title": "Microsoft Exchange attacks: how to detect, mitigate, and stay calm",
+        "url": "https://redcanary.com/blog/threat-intelligence/microsoft-exchange-attacks/",
+        "description": "Following the web shell file being dropped, we then observed follow-on activity that occurred some time between a few hours and a few days later. Though the exact eight-character web shell filename differed, the following commands were consistent across multiple victims:",
+        "domain": "redcanary.com",
+        "date": null,
+        "relevance_score": 0.25,
+        "link_status": "ok",
+        "source_type": "Threat Intel"
+      },
+      {
+        "title": "Intelligence Insights: January 2023 - Red Canary",
+        "url": "https://redcanary.com/blog/threat-intelligence/intelligence-insights/intelligence-insights-january-2023/",
+        "description": "Web shell files named iisstart.aspx and logout.aspx being written to inetpub\\wwwroot\\aspnet_client and exchange server\\v15\\frontend\\httpproxy\\ecp\\auth Activity initiated from w3wp.exe with a command line containing MSExchangePowerShellAppPool.",
+        "domain": "redcanary.com",
+        "date": null,
+        "relevance_score": 0.25,
+        "link_status": "ok",
+        "source_type": "Threat Intel"
+      }
+    ],
+    "microsoft_docs": [
+      {
+        "title": "Web shell threat hunting with Azure Sentinel and Microsoft Threat ...",
+        "url": "https://techcommunity.microsoft.com/blog/microsoftsentinelblog/web-shell-threat-hunting-with azure-sentinel-and-microsoft threat protection/1448065",
+        "description": "Jun 9, 2020 · In this blog we use Azure Sentinel to enrich the investigation of endpoint web shell alerts from Microsoft Defender Advanced Threat Protection ( ...",
+        "domain": "techcommunity.microsoft.com",
+        "date": null,
+        "relevance_score": 0.5,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "Web Shell Threat Hunting with Azure Sentinel | Microsoft Community Hub",
+        "url": "https://techcommunity.microsoft.com/blog/microsoftsentinelblog/web-shell-threat-hunting-with-azure-sentinel/2234968",
+        "description": "Mar 25, 2021 · The below diagram provides a high-level overview of an attacker leveraging these vulnerabilities to install a web shell on an Exchange server.",
+        "domain": "techcommunity.microsoft.com",
+        "date": null,
+        "relevance_score": 0.5,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "Microsoft.Web.Management.Host.Shell Namespace | Microsoft Learn",
+        "url": "https://msdn.microsoft.com/en-us/library/microsoft.web.management.host.shell(v=vs.90).aspx",
+        "description": "The Microsoft.Web.Management.Host.Shell namespace contains just two classes, ShellApplication and ShellComponents. These classes work together to start IIS Manager and pass information to it.",
+        "domain": "msdn.microsoft.com",
+        "date": null,
+        "relevance_score": 0.35,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "Windows Shell (Windows) | Microsoft Learn",
+        "url": "https://msdn.microsoft.com/en-us/library/windows/desktop/bb773177(v=vs.85).aspx",
+        "description": "The Shell Developer's Guide provides conceptual material about how the Shell works and how to use the Shell's API in your application.",
+        "domain": "msdn.microsoft.com",
+        "date": null,
+        "relevance_score": 0.35,
+        "link_status": "ok",
+        "source_type": null
+      }
+    ],
+    "conferences": [],
+    "github": [
+      {
+        "title": "threat-hunting-guide/TA0003_Persistence/T1505.003 ... - GitHub",
+        "url": "https://github.com/corelight/threat-hunting-guide/blob/master/TA0003_Persistence/T1505.003_Web_Shell.md",
+        "description": "This type of hunt analysis and anomaly detection is an effective way to identify malicious (or suspicious) activity, but modern networks are noisy, chaotic places.",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.45,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "T1505.003_WebShell_SuspSubProcesses.xml - GitHub",
+        "url": "https://github.com/microsoft/MSTIC-Sysmon/blob/main/linux/configs/attack-based/persistence/T1505.003_WebShell_SuspSubProcesses.xml",
+        "description": "Anything Sysmon related from the MSTIC R&D team. Contribute to microsoft/MSTIC-Sysmon development by creating an account on GitHub .",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.45,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "atomic-red-team/atomics/T1505.003/T1505.003.md at master ...",
+        "url": "https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1505.003/T1505.003.md?plain=1",
+        "description": "Small and highly portable detection tests based on MITRE's ATT&CK. - atomic-red-team/atomics/ T1505 . 003 / T1505 . 003 .md at master · redcanaryco/atomic-red-team",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.45,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "elastic/detection-rules · GitHub - linux",
+        "url": "https://github.com/elastic/detection-rules/blob/main/rules/linux/persistence_web_server_sus_destination_port.toml",
+        "description": "... detection rule. - Terminate any suspicious processes identified during the ... T1505.003\" name = \"Web Shell\" reference = \"https://attack.mitre.org ...",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.3,
+        "link_status": "ok",
+        "source_type": "Detection"
+      },
+      {
+        "title": "MITRE ATT&CK Mapping - GitHub",
+        "url": "https://github.com/Bert-JanP/Hunting-Queries-Detection-Rules/blob/main/MITRE+ATT&CK/Mapping.md",
+        "description": "T1505.003, Server Software Component: Web Shell, WebShell Detection. T1543, Create or Modify System Process, Azure ARC Related Persistence Detection. T1556 ...",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.3,
+        "link_status": "ok",
+        "source_type": "Detection"
+      }
+    ],
+    "sigma_rules": [
+      {
+        "title": "proc_creation_win_webshell_hacking.yml - GitHub",
+        "url": "https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_webshell_hacking.yml",
+        "description": "title: Webshell Hacking Activity Patterns id: 4ebc877f-4612-45cb-b3a5-8e3834db36c9 status: test description: | Detects certain parent child patterns found in cases in which a web shell is used to perform certain credential dumping or exfiltration activities on a compromised system references: - h...",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.35000000000000003,
+        "link_status": "ok",
+        "source_type": "Detection"
+      },
+      {
+        "title": "proc_creation_win_webshell_recon_commands_and_processes.yml",
+        "url": "https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_webshell_recon_commands_and_processes.yml",
+        "description": "title: Webshell Detection With Command Line Keywords id: bed2a484-9348-4143-8a8a-b801c979301c status: test description: Detects certain command line parameters often used during reconnaissance activity via web shells references: - https://www.fireeye.com/blog/threat-research/2013/08/breaking-down...",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.35000000000000003,
+        "link_status": "ok",
+        "source_type": "Detection"
+      },
+      {
+        "title": "sigma/rules/windows/file/file_event/file_event_win ... - GitHub",
+        "url": "https://github.com/SigmaHQ/sigma/blob/master/rules/windows/file/file_event/file_event_win_susp_file_write_in_webapps_root.yml",
+        "description": "Oct 20, 2025 · This may indicate an attempt to deploy malicious files such as web shells or other unauthorized scripts. references: - https://labs.watchtowr.com/guess-who-would-be-stupid-enough-to-rob-the-same-vault-twice-pre-auth-rce-chains-in-commvault/ author: Swachchhanda Shrawan Poudel (Next...",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.35000000000000003,
+        "link_status": "ok",
+        "source_type": "Detection"
+      },
+      {
+        "title": "proc_creation_win_susp_execution_path_webserver.yml - GitHub",
+        "url": "https://github.com/SigmaHQ/sigma/blob/master/rules-threat-hunting/windows/process_creation/proc_creation_win_susp_execution_path_webserver.yml",
+        "description": "Use this rule to hunt for potential interesting activity such as webshell or backdoors references: - Internal Research author: Florian Roth (Nextron Systems) date: 2019-01-16 modified: 2024-01-18 tags: - attack.persistence - attack. t1505 . 003 - detection.threat-hunting logsource: category: proc...",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.25,
+        "link_status": "ok",
+        "source_type": "Detection"
+      },
+      {
+        "title": "sigma/rules/linux/auditd/syscall/lnx_auditd_web_rce.yml at ...",
+        "url": "https://github.com/SigmaHQ/sigma/blob/master/rules/linux/auditd/syscall/lnx_auditd_web_rce.yml",
+        "description": "modified: 2025-12-05 tags: - attack.persistence - attack. t1505 . 003 logsource: product: linux service: auditd",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.25,
+        "link_status": "ok",
+        "source_type": "Detection"
+      },
+      {
+        "title": "sigma/rules/windows/builtin/msexchange/win_exchange ... - GitHub",
+        "url": "https://github.com/SigmaHQ/sigma/blob/master/rules/windows/builtin/msexchange/win_exchange_proxyshell_certificate_generation.yml",
+        "description": "title: Certificate Request Export to Exchange Webserver id: b7bc7038-638b-4ffd-880c-292c692209ef status: test description: Detects a write of an Exchange CSR to an untypical directory or with aspx name suffix which can be used to place a webshell references: - https://twitter.com/GossiTheDog/stat...",
+        "domain": "github.com",
+        "date": null,
+        "relevance_score": 0.25,
+        "link_status": "ok",
+        "source_type": "Detection"
+      }
+    ],
+    "lolbas_gtfobins": [],
+    "academic": [
+      {
+        "title": "Application of Deep Learning Algorithm for Web Shell ...",
+        "url": "https://www.researchgate.net/publication/386096531_Application_of_Deep_Learning_Algorithm_for_Web_Shell_Detection_in_Web_Application_Security_System",
+        "description": "Nov 20, 2024 · This research focuses on using a deep learning approach to detect web shells on the ISB Atma Luhur web server, aiming to develop a model capable of precise detection .",
+        "domain": "www.researchgate.net",
+        "date": null,
+        "relevance_score": 0.35,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "SWDNet: Stealth Web Shell Detection Technology based on Triplet Network",
+        "url": "https://ieeexplore.ieee.org/iel8/10566866/10566894/10566959.pdf",
+        "description": "We label both the small web shell and the stealth web shell as “web shell” and categorize the benign ... T1505/003/. [5] Z. Pan, Y. Chen, Y. Chen, Y. Shen, and X.",
+        "domain": "ieeexplore.ieee.org",
+        "date": null,
+        "relevance_score": 0.35,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "[PDF] Evaluating Agentic Cybersecurity in Attack/Defense CTFs - arXiv",
+        "url": "https://arxiv.org/pdf/2510.17521",
+        "description": "Oct 20, 2025 · Application, T1505.003: Web Shell. CWE-20: Improper Input Validation, CWE-434: Un- restricted Upload of File with Dangerous Type. CAPEC-641 ...",
+        "domain": "arxiv.org",
+        "date": null,
+        "relevance_score": 0.25,
+        "link_status": "ok",
+        "source_type": null
+      },
+      {
+        "title": "[PDF] automated cve analysis for threat prioritization - arXiv",
+        "url": "https://arxiv.org/pdf/2309.03040",
+        "description": "Sep 6, 2023 · from Local System), T1505.003 (Server Software Compo- nent: Web Shell), T1136 (Create Account) / T1190 (Exploit. Public-Facing Application) ...",
+        "domain": "arxiv.org",
+        "date": null,
+        "relevance_score": 0.25,
+        "link_status": "ok",
+        "source_type": null
+      }
+    ]
+  }
+}
