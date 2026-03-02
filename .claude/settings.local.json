@@ -38,7 +38,16 @@
       "Bash(git fetch:*)",
       "Read(//c/Users/JohnM/Documents/Projects/**)",
       "Bash(git remote set-url:*)",
-      "Bash(do echo:*)"
+      "Bash(do echo:*)",
+      "WebSearch",
+      "WebFetch(domain:www.elastic.co)",
+      "WebFetch(domain:psmths.gitbook.io)",
+      "WebFetch(domain:redcanary.com)",
+      "WebFetch(domain:devblogs.microsoft.com)",
+      "WebFetch(domain:www.iblue.team)",
+      "WebFetch(domain:mitre.ptsecurity.com)",
+      "WebFetch(domain:arxiv.org)",
+      "WebFetch(domain:www.atomicredteam.io)"
     ]
   }
 }
