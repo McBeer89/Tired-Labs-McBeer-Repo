@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(# Check VSCode extensions for semgrep ls \"\"/c/Users/JohnM/.vscode/extensions/\"\")",
+      "Bash(# Check the Claude Code VSCode extension MCP settings cat \"\"/c/Users/JohnM/AppData/Roaming/Code/User/settings.json\"\")",
+      "Bash(powershell.exe -Command 'echo $env:PATH')",
+      "Bash(powershell.exe -Command ':*)",
+      "Bash(printf '{\"\"jsonrpc\"\":\"\"2.0\"\",\"\"method\"\":\"\"initialize\"\",\"\"params\"\":{\"\"protocolVersion\"\":\"\"2024-11-05\"\",\"\"capabilities\"\":{},\"\"clientInfo\"\":{\"\"name\"\":\"\"test\"\",\"\"version\"\":\"\"1.0\"\"}},\"\"id\"\":1}\\\\n{\"\"jsonrpc\"\":\"\"2.0\"\",\"\"method\"\":\"\"tools/list\"\",\"\"params\"\":{},\"\"id\"\":2}\\\\n')",
+      "Bash(pip install:*)",
+      "Bash(powershell.exe -NoProfile -Command ':*)",
+      "Bash(pip index:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(pip uninstall:*)",
+      "Bash(python:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "Bash(where:*)",
+      "Bash(\"C:/Users/JohnM/AppData/Local/Programs/Python/Python313/python.exe\" --version)",
+      "Bash(\"C:/Users/JohnM/AppData/Local/Programs/Python/Python313/python.exe\" -m pip install -r \"c:/Users/JohnM/Documents/Projects/TIRED Labs/TL-McBeer-Repo/tools/trr-research-assistant/requirements.txt\")",
+      "Bash(ls:*)",
+      "Bash(\"/c/Users/JohnM/AppData/Local/Programs/Python/Launcher/py.exe\" --version)",
+      "Bash(PY=\"/c/Users/JohnM/AppData/Local/Programs/Python/Launcher/py.exe\")",
+      "Bash(\"$PY\" -3.13 --version)",
+      "Bash(\"$PY\" --list)",
+      "Bash(\"$PY\" -m pip install -r \"/c/Users/JohnM/Documents/Projects/TIRED Labs/TL-McBeer-Repo/tools/trr-research-assistant/requirements.txt\")",
+      "Bash(PYTHON=\"/c/Users/JohnM/AppData/Local/Programs/Python/Python314/python.exe\":*)",
+      "Bash(\"$PYTHON\" --version)",
+      "Bash(\"$PYTHON\" -m pip install -r \"/c/Users/JohnM/Documents/Projects/TIRED Labs/TL-McBeer-Repo/tools/trr-research-assistant/requirements.txt\")",
+      "Bash(/c/Users/JohnM/AppData/Local/Programs/Python/Python314/python.exe:*)",
+      "Bash(echo:*)",
+      "Bash(python3:*)",
+      "Bash(py -c \"import py_compile; py_compile.compile\\(''trr_research.py'', doraise=True\\); py_compile.compile\\(''importers/scraper_import.py'', doraise=True\\); print\\(''OK''\\)\")",
+      "Bash(python trr_scraper.py:*)",
+      "Bash(\"C:\\\\Users\\\\JohnM\\\\Documents\\\\Projects\\\\Tired Labs\\\\tools\\\\trr-source-scraper\\\\test_review_temp.py\":*)",
+      "Bash(del:*)",
+      "Bash(git fetch:*)",
+      "Read(//c/Users/JohnM/Documents/Projects/**)",
+      "Bash(git remote set-url:*)"
+    ]
+  }
+}

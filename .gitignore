@@ -37,10 +37,6 @@ env/
 .DS_Store
 Thumbs.db
 
-# AI assistant settings (local, machine-specific)
-.claude/
-CLAUDE.md
-
 
 # Hardware-specific local model configs
 Research Start-Up/Prompts/LM_Studio_Settings_Qwen30B.md
