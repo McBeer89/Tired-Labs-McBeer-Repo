@@ -1,5 +1,5 @@
 ---
-description: Full TRR pipeline — scoping through final README.md. Runs all phases for a technique following TIRED Labs methodology.
+description: Full TRR pipeline — scoping through final README.md. Runs all phases with stop gates and reviewer enforcement.
 argument-hint: "<ATT&CK technique ID or technique name> [platform]"
 ---
 
@@ -10,6 +10,8 @@ Execute the full TRR research pipeline for:
 > **$ARGUMENTS**
 
 Work is saved to `WIP TRRs\TRR####\[platform]\`. Replace `####` with the assigned TRR number and `[platform]` with `win`, `lnx`, etc.
+
+**Session discipline:** Each phase is a natural session boundary. If context gets heavy after a phase, recommend a fresh session rather than pushing through. A clean session with committed artifacts beats a compacted session that lost nuance.
 
 ---
 
@@ -30,21 +32,21 @@ Synthesize into a scoping document:
 
 Save to: `WIP TRRs\TRR####\win\Supporting Docs\phase1_research.md`
 
-**STOP. Present the scoping document. Confirm scope before proceeding.**
+**STOP. Present the scoping document. Wait for explicit user confirmation before proceeding. Do not pre-start Phase 2.**
 
 ---
 
 ### Phase 2: DDM Construction
 
-Spawn a **ddm-builder subagent** with the Phase 1 research notes. Build the master DDM:
-- Map all essential operations with inclusion test applied
+Spawn **ddm-builder** with the Phase 1 research notes. Build the master DDM:
+- Map all essential operations with explicit inclusion test verdicts per operation
 - Model prerequisites correctly (not inline)
 - Label all branch conditions
 - Annotate telemetry with descriptive labels on correct operations
 
 Save to: `WIP TRRs\TRR####\win\ddms\ddm_trr####_win.json`
 
-**STOP. Review the DDM. Ask: are there alternate paths not yet explored?**
+**STOP. Present the DDM. Ask: are there alternate paths not yet explored? Wait for confirmation.**
 
 ---
 
@@ -59,11 +61,11 @@ Spawn **2 subagents in parallel**:
 Save procedures to: `WIP TRRs\TRR####\win\Supporting Docs\procedures.md`
 Save exports to: `WIP TRRs\TRR####\win\ddms\trr####_win_[a/b/c].json`
 
-Then spawn **reviewer** to validate the master DDM against all checklists.
+Then spawn **reviewer** to validate the master DDM and procedure exports against all checklists.
 
-Resolve reviewer findings before proceeding.
+**If reviewer returns FAIL**: Fix all critical issues. Re-run reviewer. Do not proceed until PASS or PASS_WITH_NOTES.
 
-**STOP. Confirm procedures are distinct and DDM passes review.**
+**STOP. Present procedures and reviewer verdict. Confirm before proceeding.**
 
 ---
 
@@ -78,11 +80,13 @@ Writer produces: `WIP TRRs\TRR####\win\README.md`
 
 Then spawn **reviewer** to run the full TRR document checklist.
 
-Resolve all reviewer findings.
+**If reviewer returns FAIL**: Fix all critical issues. Re-run reviewer. Do not commit a FAIL'd document.
 
 ---
 
 ### Phase 5: Commit
+
+Only after reviewer PASS or PASS_WITH_NOTES on both DDM and TRR document:
 
 ```
 TRR####: Phase 1 — Initial overview and technical background
@@ -91,4 +95,4 @@ TRR####: Phase 3 — Procedures identified (WIN.A, WIN.B), DDM validated
 TRR####: Phase 4 — TRR document complete
 ```
 
-Present final summary: TRR ID, procedure IDs, files created, any open questions.
+Present final summary: TRR ID, procedure IDs, files created, reviewer verdicts, any open warnings.

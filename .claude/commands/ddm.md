@@ -1,78 +1,66 @@
 ---
-description: Phases 2-3 only — DDM construction, procedure identification, and per-procedure exports. Run after /scope is confirmed.
-argument-hint: "<TRR ID> <technique name> [platform - default: win]"
+description: Phases 2-3 — DDM construction and procedure identification. Requires completed Phase 1 scoping document.
+argument-hint: "<TRR ID> [platform]"
 ---
 
 # DDM: $ARGUMENTS
 
-Build and validate the Detection Data Model for:
+Build the Detection Data Model and identify procedures for:
 
 > **$ARGUMENTS**
 
-Assumes Phase 1 scoping is complete. Read `WIP TRRs\TRR####\win\Supporting Docs\phase1_research.md` before starting.
+Requires a completed Phase 1 scoping document in `WIP TRRs\TRR####\win\Supporting Docs\phase1_research.md`. If it doesn't exist, tell the user to run `/scope` first.
 
 ---
 
-### Step 1: Initial Operation Mapping
+### Step 1: Verify Prerequisites
 
-Spawn **ddm-builder** to:
+Read the Phase 1 scoping document. Confirm:
+- [ ] Scope statement exists and is specific
+- [ ] Exclusion table exists with rationale
+- [ ] Essential constraints table exists
+- [ ] No unresolved `[?]` markers that would block DDM work
 
-1. Read Phase 1 research notes
-2. Map all essential operations — apply inclusion test to each
-3. Build Arrows.app JSON with:
-   - "Action Object" verb phrase naming on every node
-   - Prerequisites as prerequisite nodes (not inline steps)
-   - Branch conditions labeled on arrows
-   - Telemetry labels descriptive and on correct operations
-4. Save to: `WIP TRRs\TRR####\win\ddms\ddm_trr####_win.json`
-
-**STOP. Review the DDM. For every operation ask:**
-- Is this truly essential — can the technique succeed without it?
-- Is this truly immutable — can the attacker avoid or change it?
-- Am I modeling the operation, or a tool that performs it?
+If prerequisites are not met, stop and tell the user what's missing.
 
 ---
 
-### Step 2: Alternate Path Discovery
+### Step 2: Phase 2 — DDM Construction
 
-Spawn **trr-researcher** to investigate:
-- Alternate APIs or mechanisms that accomplish the same essential operation
-- Variants that introduce a new essential operation → different procedure
-- Variants that only change attacker-controlled elements → same procedure, tangential
+Spawn **ddm-builder** with the Phase 1 research notes.
 
-For each alternate path found:
-- **Different essential operations** → add branch to DDM, new procedure
-- **Same essential operations, different implementation** → do not branch, note as tangential
+The builder must:
+- Map all essential operations with explicit inclusion test verdicts
+- Model prerequisites as prerequisite nodes (not inline pipeline steps)
+- Label all branch conditions on branching arrows
+- Place telemetry labels (descriptive format) on correct operations
+- Run its internal validation checklist before returning
+
+Save to: `WIP TRRs\TRR####\win\ddms\ddm_trr####_win.json`
+
+**STOP. Present the DDM. Ask: are there alternate paths not yet explored? Wait for confirmation.**
 
 ---
 
-### Step 3: Parallel Procedure Export + Validation
+### Step 3: Phase 3 — Alternate Paths + Procedures
 
 Spawn **2 subagents in parallel**:
 
-1. **ddm-builder**:
-   - Trace every distinct procedure start to finish
-   - Assign IDs: `TRR####.WIN.A`, `.B`, `.C`
-   - Produce procedure table
-   - Create per-procedure JSON exports with active path in red (`#f44e3b`)
-   - Save to: `WIP TRRs\TRR####\win\ddms\trr####_win_[a/b/c].json`
-   - Save procedure table to: `WIP TRRs\TRR####\win\Supporting Docs\procedures.md`
+1. **trr-researcher**: Investigate alternate execution paths. For each candidate path, answer: "Does this change the essential operations?" If yes → new procedure. If no → same procedure, tangential variation.
 
-2. **reviewer**:
-   - Apply full DDM review checklist to master DDM
-   - Check inclusion test on every operation
-   - Check telemetry label format and placement
-   - Check procedure distinctness
+2. **ddm-builder** (after researcher returns): Trace all distinct procedures, assign IDs, create procedure table, produce per-procedure JSON exports with red arrows on active paths.
+
+Save procedures to: `WIP TRRs\TRR####\win\Supporting Docs\procedures.md`
+Save exports to: `WIP TRRs\TRR####\win\ddms\trr####_win_[a/b/c].json`
 
 ---
 
-### Step 4: Resolve and Confirm
+### Step 4: Review Gate
 
-Resolve all reviewer findings. Re-run reviewer if significant changes were made.
+Spawn **reviewer** against all DDM files (master + per-procedure exports).
 
-Present:
-- Procedure table
-- List of files created in `ddms\`
-- Any remaining open questions
+**If FAIL**: Fix all critical issues. Re-run reviewer. Do not proceed.
+**If PASS_WITH_NOTES**: Recommend fixing warnings. May proceed.
+**If PASS**: Confirm DDM is ready.
 
-Confirm before proceeding to `/trr` document phase.
+**STOP. Present procedure table and reviewer verdict. Confirm before any TRR writing begins.**

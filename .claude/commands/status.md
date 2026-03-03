@@ -1,49 +1,46 @@
 ---
-description: Show current TRR work state — what's in progress, what's complete, git status, and any open questions.
+description: Show current TRR work state, git status, and session health
 ---
 
 # Status
 
-Show the current state of all TRR research work.
+Report the current state of the repository and any active TRR work.
 
-### Step 1: Repository Scan
+---
 
-Read the repository structure:
-- List all folders in `WIP TRRs\` (in-progress TRRs)
-- List all folders in `Completed TRR Reports\` (finished TRRs)
-- For each WIP TRR, check what files exist in `ddms\` and `Supporting Docs\`
+### Step 1: Git Status
 
-### Step 2: Git Status
+Run `git status` and `git log --oneline -5` to show:
+- Current branch
+- Uncommitted changes
+- Last 5 commits
 
-Run:
-```bash
-git status
-git log --oneline -10
+### Step 2: Active TRR Work
+
+Check `WIP TRRs\` for any TRR folders. For each:
+- TRR ID and technique name (from README.md or research notes)
+- Which phases are complete (check for committed artifacts: phase1_research.md, ddm JSON, procedure exports, README.md)
+- Any `[?]` markers in current files (grep for them)
+- Last reviewer verdict (if a review report exists)
+
+### Step 3: Present Summary
+
 ```
+## Repository Status
 
-### Step 3: Open Questions
+Branch: [branch]
+Clean: [yes/no — uncommitted changes listed if no]
+Last commits:
+  [hash] [message]
+  [hash] [message]
 
-Scan all files in `WIP TRRs\` for any `[?]` markers indicating unresolved questions.
+## Active TRR Work
 
-### Step 4: Present Summary
-
-```markdown
-## TIRED Labs Repository Status
-
-### In-Progress TRRs (WIP TRRs\)
-| TRR ID | Technique | Platform | Phase | DDMs Present | Open [?] |
-|--------|-----------|----------|-------|--------------|----------|
-| TRR#### | [name] | win | [phase] | [files] | [count] |
-
-### Completed TRRs (Completed TRR Reports\)
-[List with TRR ID and technique name]
-
-### Uncommitted Changes
-[From git status]
-
-### Recent Commits
-[Last 10 commits]
-
-### Open Questions [?]
-[Unresolved markers found, with file location]
+### TRR#### — [Technique Name]
+Phase 1 (Scoping):     ✅ committed / ⏳ in progress / ❌ not started
+Phase 2 (DDM):         ✅ / ⏳ / ❌
+Phase 3 (Procedures):  ✅ / ⏳ / ❌
+Phase 4 (TRR Doc):     ✅ / ⏳ / ❌
+Last Review:           PASS / FAIL / none
+Open [?] markers:      [count]
 ```

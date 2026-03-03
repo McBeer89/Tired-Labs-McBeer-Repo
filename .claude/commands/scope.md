@@ -67,4 +67,4 @@ Present the scoping document and ask:
 - Are all major exclusions captured with correct rationale?
 - Are there `[?]` items that must be resolved before DDM work?
 
-Do not proceed to DDM work until scope is confirmed.
+**Do not proceed to DDM work until scope is confirmed.**
