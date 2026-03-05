@@ -12,14 +12,13 @@
 
 ## Scope Statement
 
-This TRR covers persistent and in-memory IIS module and ISAPI backdoors on Windows — specifically native module registration via `applicationHost.config`, managed module registration via `web.config`, and reflective in-memory assembly loading into `w3wp.exe` — where the malicious component integrates into the IIS HTTP request pipeline to intercept server-wide traffic rather than responding to requests at a specific URL.
+This TRR covers persistent and in-memory IIS module and ISAPI backdoors on Windows — specifically native module registration via `applicationHost.config`, managed module or compiled handler registration via `web.config`, and reflective in-memory assembly loading into `w3wp.exe` — where the malicious component integrates into the IIS HTTP request pipeline to intercept or respond to traffic.
 
 | Excluded Item | Rationale |
 |---|---|
 | File-based web shells in web root (T1505.003) | Different essential operations — persistence is a script file at a web-accessible URL executed via handler mapping, not a DLL registered in IIS configuration. |
 | Delivery mechanism and post-exploitation commands | Tangential — how the component reaches the server (T1190, T1078) and what commands are executed through it (T1059, T1033) are attacker-controlled and separate techniques. |
 | Implementation-specific details (DLL names, C2 triggers, encoding, optional evasion hooks) | Tangential — attacker-controlled. All variants converge on the same essential configuration write and pipeline interception operations. |
-| IIS HTTP handlers (`IHttpHandler` in `<handlers>`) | Boundary case — handlers respond only to URL-matched requests, not server-wide interception. Closer to T1505.003 execution model despite DLL implementation. |
 | ASP.NET Core on IIS (Kestrel reverse proxy model) | Different architecture — IIS acts as reverse proxy to Kestrel, not as the execution engine. |
 
 ## Technique Overview
@@ -52,9 +51,9 @@ All IIS module types execute within `w3wp.exe` under the application pool identi
 
 Modules registered for the `RQ_LOG_REQUEST` pipeline event can read and modify the IIS log record before IIS writes it to the W3C access log. This allows a malicious module to rewrite the HTTP method, alter the URI, or strip header fields from its own traffic — all before the log entry is committed. This capability is inherent to the pipeline event model and available to any registered module.
 
-### IIS HTTP Handlers — Boundary Case
+### Compiled IIS HTTP Handlers
 
-IIS also supports HTTP handlers (`IHttpHandler`), which respond only to URL-matched requests rather than intercepting all server traffic. A handler registered in the `<handlers>` section executes only when a request matches the configured URL pattern, making its execution model equivalent to that of a file-based web shell — URL-specific, not server-wide. This boundary case falls closer to T1505.003 than T1505.004 and is excluded from this TRR's scope and DDM.
+IIS also supports HTTP handlers (`IHttpHandler`), which respond only to URL-matched requests via `ProcessRequest()` rather than intercepting all pipeline traffic via event subscription. A compiled `IHttpHandler` assembly registered in the `<handlers>` section of `web.config` follows the same essential operations as a managed module (Procedure B): the assembly is written to `/bin`, `web.config` is modified, and the CLR loads the assembly via the managed assembly loader. The prerequisite operations, load mechanism, and telemetry are identical — only the web.config target section (`<handlers>` vs `<modules>`) and the execution model (URL-matched vs pipeline-wide) differ. Because these differences do not change the essential operations or telemetry at the DDM level, compiled `IHttpHandler` deployments are covered under Procedure B. Script-based handler remapping — where `web.config` routes a static extension through `PageHandlerFactory` and ASP.NET compiles a script file at request time — involves different essential operations (ASP.NET compilation, `buildProviders` registration) and falls under T1505.003.
 
 ### Telemetry Constraints
 
@@ -69,7 +68,7 @@ The telemetry source for managed assembly loads across both Procedures B and C i
 | ID | Name | Summary | Distinguishing Operations |
 |----|------|---------|--------------------------|
 | [TRR0029.WIN.A] | Persistent Native Module | C++ DLL registered in `applicationHost.config`, loaded via `LoadLibrary` at worker process start. Requires administrator. Survives reboots. | DLL write + `applicationHost.config` modification + `LoadLibrary` (NtMapViewOfSection). ISAPI variant maps here. |
-| [TRR0029.WIN.B] | Persistent Managed Module | .NET assembly in `/bin` registered in `web.config`, loaded via CLR on first request. No administrator required in default config. Survives reboots. | Assembly write + `web.config` modification + CLR managed loader. |
+| [TRR0029.WIN.B] | Persistent Managed Module | .NET assembly in `/bin` registered in `web.config`, loaded via CLR on first request. Covers both `IHttpModule` (pipeline-wide) and compiled `IHttpHandler` (URL-matched) variants. No administrator required in default config. Survives reboots. | Assembly write + `web.config` modification + CLR managed loader. |
 | [TRR0029.WIN.C] | Reflective In-Memory Module | .NET assembly loaded reflectively into `w3wp.exe` via `Assembly.Load(byte[])` from pre-existing code execution. No disk artifact. Not persistent. | Code execution in `w3wp.exe` + reflective assembly load (heap allocation, no NtMapViewOfSection). |
 
 ### Procedure A: Persistent Native Module
@@ -100,11 +99,13 @@ The assembly is not loaded at worker process start. Instead, on the first HTTP r
 
 On every subsequent HTTP request, `w3wp.exe` invokes the registered handlers at their subscribed stages. The backdoor survives worker process recycles and server reboots because its registration is stored in `web.config`.
 
+A compiled `IHttpHandler` registered in the `<handlers>` section of `web.config` follows this same procedure. The prerequisite operations are identical: the assembly is written to `/bin` (Sysmon 11), and `web.config` is modified (Sysmon 11, EID 29 if API-mediated). The CLR loads the assembly through the same managed loader path (ETW EID 154). The execution model differs — an `IHttpHandler` responds to URL-matched requests via `ProcessRequest()` rather than subscribing to pipeline events via `Init()` — but this difference does not introduce or remove any essential operation at the telemetry level.
+
 #### Detection Data Model
 
 ![DDM - Procedure B: Persistent Managed Module](ddms/trr0029_win_b.png)
 
-The DDM shows two prerequisite nodes — Write Assembly to Bin and Modify web.config — feeding into the Load Managed Assembly operation, which in turn flows to Intercept HTTP Request. Both prerequisite operations produce Sysmon 11 (FileCreate) telemetry independently. Load Managed Assembly produces ETW DotNETRuntime EID 154 (AssemblyLoad_V1) telemetry, conditioned on an active ETW consumer. Intercept HTTP Request produces IIS W3C Access Logs telemetry.
+The DDM shows two prerequisite nodes — Write Assembly to Bin and Modify web.config — feeding into the Load Managed Assembly operation, which in turn flows to Intercept HTTP Request. Both prerequisite operations produce Sysmon 11 (FileCreate) telemetry independently. The Modify web.config operation covers registration in either `<modules>` (IHttpModule) or `<handlers>` (compiled IHttpHandler) — both produce the same telemetry. Load Managed Assembly produces ETW DotNETRuntime EID 154 (AssemblyLoad_V1) telemetry, conditioned on an active ETW consumer. Intercept HTTP Request produces IIS W3C Access Logs telemetry.
 
 ---
 

@@ -1,1 +1,142 @@
-{"graph": {"style": {"font-family": "sans-serif", "background-color": "#ffffff", "background-image": "", "background-size": "100%", "node-color": "#ffffff", "border-width": 4, "border-color": "#000000", "radius": 50, "node-padding": 5, "node-margin": 2, "outside-position": "auto", "node-icon-image": "", "node-background-image": "", "icon-position": "inside", "icon-size": 64, "caption-position": "inside", "caption-max-width": 200, "caption-color": "#000000", "caption-font-size": 16, "caption-font-weight": "normal", "label-position": "outside", "label-display": "pill", "label-color": "#000000", "label-background-color": "#ffffff", "label-border-color": "#000000", "label-border-width": 2, "label-font-size": 14, "label-padding": 5, "label-margin": 4, "directionality": "directed", "detail-position": "inline", "detail-orientation": "parallel", "arrow-width": 5, "arrow-color": "#000000", "margin-start": 5, "margin-end": 5, "margin-peer": 20, "attachment-start": "normal", "attachment-end": "normal", "relationship-icon-image": "", "type-color": "#000000", "type-background-color": "#ffffff", "type-border-color": "#000000", "type-border-width": 0, "type-font-size": 16, "type-padding": 5, "property-position": "outside", "property-alignment": "colon", "property-color": "#000000", "property-font-size": 13, "property-font-weight": "normal"}, "nodes": [{"id": "n6", "position": {"x": 100, "y": 0}, "caption": "Gain Code Execution", "labels": ["IIS W3C Access Logs"], "properties": {"Procedure": "C", "Process": "w3wp.exe", "Prerequisite": "Pre-existing code execution within worker process"}, "style": {"border-color": "#000000", "label-font-size": 14}}, {"id": "n7", "position": {"x": 450, "y": 0}, "caption": "Load Assembly Reflectively", "labels": ["ETW DotNETRuntime EID 154 (AssemblyLoad_V1)"], "properties": {"Procedure": "C", "Process": "w3wp.exe", "Mechanism": "Assembly.Load(byte[]) \u2014 heap allocation, no disk file", "Note": "ETW consumer required; not default-enabled"}, "style": {"border-color": "#000000", "label-font-size": 14}}, {"id": "n9", "position": {"x": 750, "y": 0}, "caption": "Intercept HTTP Request", "labels": ["IIS W3C Access Logs"], "properties": {"Procedures": "A, B, C", "Process": "w3wp.exe", "Pipeline": "Hook registration (RegisterModule/IHttpModule.Init) precedes interception \u2014 no direct telemetry for registration step", "Note": "Module may tamper with log entries via RQ_LOG_REQUEST"}, "style": {"border-color": "#000000", "label-font-size": 14}}], "relationships": [{"id": "r4", "fromId": "n6", "toId": "n7", "type": "", "properties": {}, "style": {"arrow-color": "#f44e3b"}}, {"id": "r7", "fromId": "n7", "toId": "n9", "type": "", "properties": {}, "style": {"arrow-color": "#f44e3b", "detail-orientation": "horizontal"}}]}}
+{
+  "style": {
+    "font-family": "sans-serif",
+    "background-color": "#ffffff",
+    "background-image": "",
+    "background-size": "100%",
+    "node-color": "#ffffff",
+    "border-width": 4,
+    "border-color": "#000000",
+    "radius": 50,
+    "node-padding": 5,
+    "node-margin": 2,
+    "outside-position": "auto",
+    "node-icon-image": "",
+    "node-background-image": "",
+    "icon-position": "inside",
+    "icon-size": 64,
+    "caption-position": "inside",
+    "caption-max-width": 200,
+    "caption-color": "#000000",
+    "caption-font-size": 16,
+    "caption-font-weight": "normal",
+    "label-position": "outside",
+    "label-display": "pill",
+    "label-color": "#000000",
+    "label-background-color": "#ffffff",
+    "label-border-color": "#000000",
+    "label-border-width": 2,
+    "label-font-size": 14,
+    "label-padding": 5,
+    "label-margin": 4,
+    "directionality": "directed",
+    "detail-position": "inline",
+    "detail-orientation": "parallel",
+    "arrow-width": 5,
+    "arrow-color": "#000000",
+    "margin-start": 5,
+    "margin-end": 5,
+    "margin-peer": 20,
+    "attachment-start": "normal",
+    "attachment-end": "normal",
+    "relationship-icon-image": "",
+    "type-color": "#000000",
+    "type-background-color": "#ffffff",
+    "type-border-color": "#000000",
+    "type-border-width": 0,
+    "type-font-size": 16,
+    "type-padding": 5,
+    "property-position": "outside",
+    "property-alignment": "colon",
+    "property-color": "#000000",
+    "property-font-size": 13,
+    "property-font-weight": "normal"
+  },
+  "nodes": [
+    {
+      "id": "n6",
+      "position": {
+        "x": 100,
+        "y": 0
+      },
+      "caption": "Gain Code Execution",
+      "labels": [
+        "IIS W3C Access Logs"
+      ],
+      "properties": {
+        "Procedure": "C",
+        "Process": "w3wp.exe",
+        "Prerequisite": "Pre-existing code execution within worker process"
+      },
+      "style": {
+        "border-color": "#000000",
+        "label-font-size": 14
+      }
+    },
+    {
+      "id": "n7",
+      "position": {
+        "x": 450,
+        "y": 0
+      },
+      "caption": "Load Assembly Reflectively",
+      "labels": [
+        "ETW DotNETRuntime EID 154 (AssemblyLoad_V1)"
+      ],
+      "properties": {
+        "Procedure": "C",
+        "Process": "w3wp.exe",
+        "Mechanism": "Assembly.Load(byte[]) — heap allocation, no disk file",
+        "Note": "ETW consumer required; not default-enabled"
+      },
+      "style": {
+        "border-color": "#000000",
+        "label-font-size": 14
+      }
+    },
+    {
+      "id": "n9",
+      "position": {
+        "x": 750,
+        "y": 0
+      },
+      "caption": "Intercept HTTP Request",
+      "labels": [
+        "IIS W3C Access Logs"
+      ],
+      "properties": {
+        "Procedures": "A, B, C",
+        "Process": "w3wp.exe",
+        "Pipeline": "IHttpModule variant: hook registration (RegisterModule/IHttpModule.Init) intercepts all pipeline traffic. IHttpHandler variant: ProcessRequest() responds to URL-matched requests only. No direct telemetry for either registration step.",
+        "Note": "Module or handler may tamper with log entries via RQ_LOG_REQUEST"
+      },
+      "style": {
+        "border-color": "#000000",
+        "label-font-size": 14
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "id": "r4",
+      "fromId": "n6",
+      "toId": "n7",
+      "type": "",
+      "properties": {},
+      "style": {
+        "arrow-color": "#000000"
+      }
+    },
+    {
+      "id": "r7",
+      "fromId": "n7",
+      "toId": "n9",
+      "type": "",
+      "properties": {},
+      "style": {
+        "arrow-color": "#000000",
+        "detail-orientation": "horizontal"
+      }
+    }
+  ]
+}
