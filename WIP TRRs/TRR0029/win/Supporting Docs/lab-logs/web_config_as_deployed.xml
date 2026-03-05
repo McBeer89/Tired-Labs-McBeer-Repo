@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <system.webServer>
+        <modules>
+            <add name="BenignModule" type="BenignModule" />
+            <add name="TestEID29Module" type="BenignModule" />
+          <add name="TestDirectEdit" type="BenignModule" />
+        </modules>
+    </system.webServer>
+</configuration>
+
+
