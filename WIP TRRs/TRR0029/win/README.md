@@ -16,22 +16,11 @@ This TRR covers persistent and in-memory IIS module and ISAPI backdoors on Windo
 
 | Excluded Item | Rationale |
 |---|---|
-| File-based web shells (.aspx, .asp, .ashx, .php) in web root (T1505.003) | Different essential operations — persistence is a script file at a web-accessible URL executed via handler mapping, not a DLL registered in IIS configuration. |
-| SQL Stored Procedures (T1505.001) | Different essential operations — database engine execution, not HTTP pipeline. Warrants separate TRR. |
-| Transport Agent (T1505.002) | Different essential operations — Exchange mail transport pipeline, not IIS HTTP pipeline. Warrants separate TRR. |
-| Terminal Services DLL (T1505.005) | Different essential operations — RDP service context, not IIS. Warrants separate TRR. |
-| vSphere Installation Bundles (T1505.006) | Different essential operations — VMware ESXi boot mechanism. Warrants separate TRR. |
-| PHP web shells on Linux (Apache/Nginx) | Different essential operations — different process lineage, different telemetry (auditd), different platform. Warrants separate TRR. |
-| JSP web shells on Tomcat | Different essential operations — JVM process context, Jasper compilation model. Warrants separate TRR. |
-| Web shells on network appliances | Different essential operations — hardened filesystem, appliance-specific persistence. Warrants separate TRR. |
-| Delivery mechanism (T1190, T1078) | Tangential — attacker-controlled prerequisite. How the component reaches the server is variable; IIS registration is the essential operation. |
-| Post-exploitation commands executed through the module | Tangential — separate techniques using the module as a channel. |
-| Specific DLL file names, module names, or registration tool | Tangential — attacker-controlled. All registration methods converge on the same configuration file write. |
-| C2 trigger mechanism (cookie, header, URL parameter, POST body) | Tangential — attacker-controlled. The delivery field varies per malware family. |
-| C2 encryption or encoding | Tangential — attacker-controlled. Does not change the essential pipeline interception operation. |
-| Anti-log tampering via `OnLogRequest` hook | Tangential — optional evasion layer present in only some families. Not essential to the technique. |
-| IIS HTTP handlers (`IHttpHandler` in `<handlers>`) | Boundary case — handlers respond only to URL-matched requests, not server-wide interception. Closer to T1505.003 execution model despite DLL implementation. Documented in Technical Background. |
-| ASP.NET Core on IIS (Kestrel reverse proxy model) | Different architecture — IIS acts as proxy, not execution engine. Out of platform scope. |
+| File-based web shells in web root (T1505.003) | Different essential operations — persistence is a script file at a web-accessible URL executed via handler mapping, not a DLL registered in IIS configuration. |
+| Delivery mechanism and post-exploitation commands | Tangential — how the component reaches the server (T1190, T1078) and what commands are executed through it (T1059, T1033) are attacker-controlled and separate techniques. |
+| Implementation-specific details (DLL names, C2 triggers, encoding, optional evasion hooks) | Tangential — attacker-controlled. All variants converge on the same essential configuration write and pipeline interception operations. |
+| IIS HTTP handlers (`IHttpHandler` in `<handlers>`) | Boundary case — handlers respond only to URL-matched requests, not server-wide interception. Closer to T1505.003 execution model despite DLL implementation. |
+| ASP.NET Core on IIS (Kestrel reverse proxy model) | Different architecture — IIS acts as reverse proxy to Kestrel, not as the execution engine. |
 
 ## Technique Overview
 
@@ -57,7 +46,7 @@ All persistent registration paths — for both native and managed modules — re
 
 ### Process Context
 
-All IIS module types execute within `w3wp.exe` under the application pool identity, which defaults to `IIS APPPOOL\{PoolName}`, a low-privilege virtual account. This is the same process that executes file-based web shell requests. A critical operational distinction exists, however: a malicious IIS module can execute commands entirely in-process using .NET or Win32 APIs, without spawning a child process. When no `cmd.exe` or `powershell.exe` child appears under `w3wp.exe`, process-tree-based telemetry for the worker process does not fire. Microsoft's DART team has explicitly noted that monitoring for `w3wp.exe` spawning `cmd.exe` is not a reliable basis for analysis of IIS module-based backdoors.
+All IIS module types execute within `w3wp.exe` under the application pool identity, which defaults to `IIS APPPOOL\{PoolName}`, a low-privilege virtual account. This is the same process that executes file-based web shell requests. A critical operational distinction exists, however: a malicious IIS module can execute commands entirely in-process using .NET or Win32 APIs, without spawning a child process. When no `cmd.exe` or `powershell.exe` child appears under `w3wp.exe`, process-tree-based telemetry for the worker process does not fire.
 
 ### Log Suppression Capability
 
@@ -67,17 +56,7 @@ Modules registered for the `RQ_LOG_REQUEST` pipeline event can read and modify t
 
 IIS also supports HTTP handlers (`IHttpHandler`), which respond only to URL-matched requests rather than intercepting all server traffic. A handler registered in the `<handlers>` section executes only when a request matches the configured URL pattern, making its execution model equivalent to that of a file-based web shell — URL-specific, not server-wide. This boundary case falls closer to T1505.003 than T1505.004 and is excluded from this TRR's scope and DDM.
 
-### Telemetry Enablement
-
-| Telemetry Source | Default State | Enablement |
-|---|---|---|
-| Sysmon 11 (FileCreate) | Requires Sysmon installation | Sysmon configuration with file-create rules |
-| Sysmon 7 (ImageLoad) | Requires Sysmon installation | Sysmon configuration with image-load rules targeting `w3wp.exe` |
-| Microsoft-IIS-Configuration/Operational EID 29 | Disabled by default | `wevtutil sl /e:true Microsoft-IIS-Configuration/Operational` |
-| Windows Security EID 4663 | Requires SACL on target file | SACL on `applicationHost.config` plus Object Access audit policy |
-| Windows Security EID 4688 (ProcessCreate) | Requires audit policy | Process Creation audit policy (Advanced Audit Configuration) |
-| ETW Microsoft-Windows-DotNETRuntime EID 154 (AssemblyLoad_V1) | Requires ETW consumer | Not collected by default; requires active ETW session subscribing to the runtime provider with `LoaderKeyword (0x8)` |
-| IIS W3C Access Logs | Enabled by default | Default fields log URI, method, and status; Cookie values and POST body are not logged by default |
+### Telemetry Constraints
 
 Two important constraints apply to the IIS configuration change event. Microsoft-IIS-Configuration/Operational EID 29 fires on module additions and removals that flow through the IIS configuration API layer — commands executed via administrative interfaces such as `appcmd` or the IIS Manager. Direct text edits to `applicationHost.config` or `web.config` bypass the API entirely; EID 29 does not fire for direct file edits. Sysmon 11 (FileCreate) fires on file overwrite regardless of how the file was modified, making it the only telemetry source that covers both API-mediated and direct-edit registration paths.
 
@@ -85,11 +64,11 @@ The reflective assembly load path presents a distinct constraint. Sysmon 7 (Imag
 
 ## Procedures
 
-| ID | Name | Tactic |
-|----|------|--------|
-| [TRR0029.WIN.A] | Persistent Native Module | Persistence |
-| [TRR0029.WIN.B] | Persistent Managed Module | Persistence |
-| [TRR0029.WIN.C] | Reflective In-Memory Module | Persistence |
+| ID | Name | Summary | Distinguishing Operations |
+|----|------|---------|--------------------------|
+| [TRR0029.WIN.A] | Persistent Native Module | C++ DLL registered in `applicationHost.config`, loaded via `LoadLibrary` at worker process start. Requires administrator. Survives reboots. | DLL write + `applicationHost.config` modification + `LoadLibrary` (NtMapViewOfSection). ISAPI variant maps here. |
+| [TRR0029.WIN.B] | Persistent Managed Module | .NET assembly in `/bin` registered in `web.config`, loaded via CLR on first request. No administrator required in default config. Survives reboots. | Assembly write + `web.config` modification + CLR disk loader (NtMapViewOfSection). |
+| [TRR0029.WIN.C] | Reflective In-Memory Module | .NET assembly loaded reflectively into `w3wp.exe` via `Assembly.Load(byte[])` from pre-existing code execution. No disk artifact. Not persistent. | Code execution in `w3wp.exe` + reflective assembly load (heap allocation, no NtMapViewOfSection). |
 
 ### Procedure A: Persistent Native Module
 
@@ -131,7 +110,7 @@ The DDM shows two prerequisite nodes — Write Assembly to Bin and Modify web.co
 
 This procedure does not write a file to disk and does not modify any IIS configuration file. Its pipeline is entirely distinct from Procedures A and B.
 
-The attacker has pre-existing code execution within `w3wp.exe`. The mechanism by which this foothold is obtained is a separate technique (delivery is excluded from this TRR's scope) but the initial exploitation request is captured in IIS W3C access logs and may produce EDR behavioral telemetry depending on the instrumentation model deployed.
+The attacker has pre-existing code execution within `w3wp.exe`. The mechanism by which this foothold is obtained is a separate technique (delivery is excluded from this TRR's scope) but the initial exploitation request is captured in IIS W3C access logs.
 
 From within `w3wp.exe`, the attacker calls `Assembly.Load(byte[])`, passing a .NET assembly as a raw byte array. The CLR allocates memory from the heap and loads the assembly without writing any file to disk and without calling `NtMapViewOfSection`. Because `NtMapViewOfSection` is not invoked, Sysmon 7 (ImageLoad) does not fire. The only telemetry source for this load is ETW Microsoft-Windows-DotNETRuntime EID 154 (AssemblyLoad_V1), produced by the CLR runtime provider. This event requires an active ETW consumer session subscribed to the runtime provider with `LoaderKeyword (0x8)` — it is not captured by default. Because ETW events are generated in user space, an attacker with code execution in `w3wp.exe` can suppress them by patching `ntdll!EtwEventWrite` before loading the assembly.
 
@@ -141,7 +120,7 @@ Once loaded, the assembly registers its event handlers in the live IIS pipeline 
 
 ![DDM - Procedure C: Reflective In-Memory Module](ddms/trr0029_win_c.png)
 
-The DDM shows Gain Code Execution flowing into Load Assembly Reflectively, which in turn flows to Intercept HTTP Request. Gain Code Execution produces IIS W3C Access Logs and EDR Behavioral telemetry. Load Assembly Reflectively produces ETW DotNETRuntime EID 154 (AssemblyLoad_V1) telemetry, conditioned on an active ETW consumer. Intercept HTTP Request produces IIS W3C Access Logs telemetry.
+The DDM shows Gain Code Execution flowing into Load Assembly Reflectively, which in turn flows to Intercept HTTP Request. Gain Code Execution produces IIS W3C Access Logs telemetry. Load Assembly Reflectively produces ETW DotNETRuntime EID 154 (AssemblyLoad_V1) telemetry, conditioned on an active ETW consumer. Intercept HTTP Request produces IIS W3C Access Logs telemetry.
 
 ## Available Emulation Tests
 

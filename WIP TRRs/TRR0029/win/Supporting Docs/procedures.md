@@ -26,7 +26,7 @@
 | n3 | Write Assembly to Bin | Sysmon 11 (FileCreate) | B |
 | n4 | Modify web.config | Sysmon 11 (FileCreate), IIS-Config/Operational EID 29 (API-mediated only) | B |
 | n5 | Load Managed Assembly | Sysmon 7 (ImageLoad) | B |
-| n6 | Gain Code Execution | IIS W3C Access Logs, EDR Behavioral | C |
+| n6 | Gain Code Execution | IIS W3C Access Logs | C |
 | n7 | Load Assembly Reflectively | ETW DotNETRuntime EID 154 (AssemblyLoad_V1) | C |
 | n9 | Intercept HTTP Request | IIS W3C Access Logs | A, B, C |
 
@@ -41,7 +41,7 @@
 | IIS-Config/Operational EID 29 | Config write (API-mediated only) | Config write (API-mediated only) | Not applicable |
 | ETW DotNETRuntime EID 154 | Not applicable | Not applicable | Reflective assembly load (requires ETW consumer) |
 | IIS W3C Access Logs | HTTP interception | HTTP interception | Exploit request + HTTP interception |
-| EDR Behavioral | — | — | Exploit / code execution |
+| IIS W3C Access Logs | — | — | Exploit request (Procedure C prerequisite) |
 
 ## Alternate Path Analysis (Phase 3 Research)
 
