@@ -56,8 +56,8 @@
     {
       "id": "n0",
       "position": {
-        "x": 37.20097368320027,
-        "y": -197.20788860666033
+        "x": 100,
+        "y": -200
       },
       "caption": "Write DLL to Disk",
       "labels": [
@@ -75,8 +75,8 @@
     {
       "id": "n1",
       "position": {
-        "x": 37.20097368320027,
-        "y": -52.79211139333961
+        "x": 100,
+        "y": -50
       },
       "caption": "Modify applicationHost.config",
       "labels": [
@@ -95,8 +95,8 @@
     {
       "id": "n2",
       "position": {
-        "x": 529.0359837129744,
-        "y": -125.00000000000003
+        "x": 450,
+        "y": -125
       },
       "caption": "Load Native DLL",
       "labels": [
@@ -115,8 +115,8 @@
     {
       "id": "n3",
       "position": {
-        "x": 37.20097368320027,
-        "y": 149.99999999999997
+        "x": -20.13726773648645,
+        "y": 133.1053850103652
       },
       "caption": "Write Assembly to Bin",
       "labels": [
@@ -134,8 +134,8 @@
     {
       "id": "n4",
       "position": {
-        "x": 37.20097368320027,
-        "y": 283.6675014797888
+        "x": -20.13726773648645,
+        "y": 301.9016339149599
       },
       "caption": "Modify web.config",
       "labels": [
@@ -155,8 +155,8 @@
     {
       "id": "n5",
       "position": {
-        "x": 369.8856342926166,
-        "y": 200
+        "x": 334.6372293289626,
+        "y": 217.50350946266252
       },
       "caption": "Load Managed Assembly",
       "labels": [
@@ -176,8 +176,8 @@
     {
       "id": "n6",
       "position": {
-        "x": 37.20097368320027,
-        "y": 435.8750459129309
+        "x": 178.48937486852657,
+        "y": 436.7274519697821
       },
       "caption": "Gain Code Execution",
       "labels": [
@@ -196,8 +196,8 @@
     {
       "id": "n7",
       "position": {
-        "x": 529.0359837129744,
-        "y": 435.8750459129309
+        "x": 513.2725480302179,
+        "y": 436.7274519697821
       },
       "caption": "Load Assembly Reflectively",
       "labels": [
@@ -228,7 +228,7 @@
         "Procedures": "A, B, C",
         "Process": "w3wp.exe",
         "Pipeline": "IHttpModule variant: hook registration (RegisterModule/IHttpModule.Init) intercepts all pipeline traffic. IHttpHandler variant: ProcessRequest() responds to URL-matched requests only. No direct telemetry for either registration step.",
-        "Note": "Module or handler may tamper with log entries via RQ_LOG_REQUEST"
+        "Note": "IHttpModule variant may tamper with log entries via RQ_LOG_REQUEST; not applicable to IHttpHandler variant"
       },
       "style": {
         "border-color": "#000000",
@@ -302,7 +302,7 @@
       "id": "r6",
       "fromId": "n5",
       "toId": "n9",
-      "type": "if managed module",
+      "type": "if managed assembly",
       "properties": {},
       "style": {
         "arrow-color": "#000000",
