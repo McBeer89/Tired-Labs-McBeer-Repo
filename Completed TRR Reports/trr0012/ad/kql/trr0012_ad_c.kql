@@ -1,0 +1,53 @@
+// TRR0012.AD.C — Test All Accounts for Pre-Auth Status
+// Operations: n7 "Send AS-REP" | Telemetry: Event 4771, Event 4768
+
+// Operation: n7 "Send AS-REP" | Telemetry: Event 4771 (Kerberos PreAuth Failed)
+// Pre-authentication failures with KDC_ERR_PREAUTH_REQUIRED
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4771
+| where FailureCode == "0x19"
+| where PreAuthType == "0"
+| project TimeGenerated, TargetUserName, IpAddress, PreAuthType, FailureCode, TicketEncryptionType
+| sort by TimeGenerated desc
+;
+
+// Operation: n7 "Send AS-REP" | Telemetry: Event 4771 (Kerberos PreAuth Failed)
+// Summarize failure volume by source IP for triage
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4771
+| where FailureCode == "0x19"
+| where PreAuthType == "0"
+| summarize FailureCount = count(), DistinctAccounts = dcount(TargetUserName) by IpAddress
+| sort by FailureCount desc
+;
+
+// Operation: n7 "Send AS-REP" | Telemetry: Event 4768 (TGT Requested)
+// Successful TGTs without pre-auth (accounts that passed the test)
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4768
+| where PreAuthType == "0"
+| where Status == "0x0"
+| project TimeGenerated, TargetUserName, IpAddress, PreAuthType, TicketEncryptionType, Status
+| sort by TimeGenerated desc
+;
+
+// Operation: n7 "Send AS-REP" | Telemetry: Event 4771 (Kerberos PreAuth Failed)
+// Pre-authentication failures (Defender)
+IdentityQueryEvents
+| where Timestamp > ago(24h)
+| where ActionType == "Kerberos authentication failed (AS)"
+| project Timestamp, AccountName, DeviceName, AdditionalFields
+| sort by Timestamp desc
+;
+
+// Operation: n7 "Send AS-REP" | Telemetry: Event 4768 (TGT Requested)
+// Successful TGTs without pre-auth (Defender)
+IdentityQueryEvents
+| where Timestamp > ago(24h)
+| where ActionType == "Kerberos authentication (AS)"
+| project Timestamp, AccountName, DeviceName, AdditionalFields
+| sort by Timestamp desc
+;

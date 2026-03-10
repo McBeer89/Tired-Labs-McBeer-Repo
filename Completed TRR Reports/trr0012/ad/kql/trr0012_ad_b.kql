@@ -1,0 +1,24 @@
+// TRR0012.AD.B — Enumerate Accounts Lacking Pre-Auth via ADWS
+// Shares the TGT request pipeline (n11 onward) with Procedure A.
+// ADWS enumeration (n1, n3) has no queryable telemetry.
+// Queries below target n7 "Send AS-REP" — identical to Procedure A.
+
+// Operation: n7 "Send AS-REP" | Telemetry: Event 4768 (TGT Requested)
+// Successful TGT issued without pre-authentication
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4768
+| where PreAuthType == "0"
+| where Status == "0x0"
+| project TimeGenerated, TargetUserName, IpAddress, PreAuthType, TicketEncryptionType, Status
+| sort by TimeGenerated desc
+;
+
+// Operation: n7 "Send AS-REP" | Telemetry: Event 4768 (TGT Requested)
+// Successful TGT issued without pre-authentication (Defender)
+IdentityQueryEvents
+| where Timestamp > ago(24h)
+| where ActionType == "Kerberos authentication (AS)"
+| project Timestamp, AccountName, DeviceName, AdditionalFields
+| sort by Timestamp desc
+;
