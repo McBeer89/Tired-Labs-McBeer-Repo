@@ -1,0 +1,76 @@
+// TRR0013.AD.B — Query 1: Sentinel SecurityEvent (Event 4769 with ENC-TKT-IN-SKEY)
+// DDM Operation: n1 "Receive Network Request" (U2U+S4U2Self TGS-REQ)
+// ENC-TKT-IN-SKEY (bit 0x8) immutable for U2U; TargetUserName == ServiceName immutable for S4U2Self.
+
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4769
+| where Status == "0x0"
+| extend TicketOptionsHex = iff(TicketOptions startswith "0x", TicketOptions, strcat("0x", TicketOptions))
+| extend TicketOptionsInt = tolong(TicketOptionsHex)
+| where binary_and(TicketOptionsInt, 8) != 0
+| where TargetUserName == ServiceName
+| project
+    TimeGenerated,
+    Computer,
+    TargetUserName,
+    TargetDomainName,
+    ServiceName,
+    TicketOptions,
+    TicketEncryptionType,
+    IpAddress,
+    IpPort
+| sort by TimeGenerated desc
+;
+
+
+// TRR0013.AD.B — Query 2: Sentinel SecurityEvent (Event 4769 without preceding Event 4768)
+// DDM Operation: n22 "Receive Network Request" (TGS-REQ with forged TGT)
+// Same correlation as Procedure A — forged TGT was never issued, so no Event 4768 exists.
+
+let lookback = 24h;
+let tgt_issuances =
+    SecurityEvent
+    | where TimeGenerated > ago(lookback)
+    | where EventID == 4768
+    | where Status == "0x0"
+    | distinct TargetUserName;
+SecurityEvent
+| where TimeGenerated > ago(lookback)
+| where EventID == 4769
+| where Status == "0x0"
+| join kind=leftanti tgt_issuances on TargetUserName
+| extend IsMachineAccount = TargetUserName endswith "$"
+| project
+    TimeGenerated,
+    Computer,
+    TargetUserName,
+    TargetDomainName,
+    ServiceName,
+    TicketOptions,
+    TicketEncryptionType,
+    IpAddress,
+    IpPort,
+    IsMachineAccount
+| sort by TimeGenerated desc
+;
+
+
+// TRR0013.AD.B — Query 3: Defender for Identity IdentityLogonEvents
+// DDM Operation: n1 "Receive Network Request" (U2U+S4U2Self TGS-REQ)
+// Baseline Kerberos events — field-level filtering for ENC-TKT-IN-SKEY requires parsing AdditionalFields.
+
+IdentityLogonEvents
+| where Timestamp > ago(24h)
+| where Protocol == "Kerberos"
+| project
+    Timestamp,
+    ActionType,
+    AccountName,
+    AccountDomain,
+    DeviceName,
+    DestinationDeviceName,
+    Protocol,
+    AdditionalFields
+| sort by Timestamp desc
+;
