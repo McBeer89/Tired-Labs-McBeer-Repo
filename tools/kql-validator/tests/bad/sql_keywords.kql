@@ -1,0 +1,5 @@
+// TRR0099.WIN.A -- Bad: SQL keywords
+// DDM Operation: n1 "Test"
+
+SELECT TimeGenerated, DeviceName FROM DeviceProcessEvents WHERE FileName == "cmd.exe" AND ProcessCommandLine has "whoami"
+;

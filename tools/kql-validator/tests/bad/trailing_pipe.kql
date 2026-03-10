@@ -1,0 +1,6 @@
+// TRR0099.WIN.A -- Bad: Trailing pipe
+// DDM Operation: n3 "Test"
+
+DeviceProcessEvents
+| where Timestamp > ago(24h)
+|

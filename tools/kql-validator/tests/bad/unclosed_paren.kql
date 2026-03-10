@@ -1,0 +1,7 @@
+// TRR0099.WIN.A -- Bad: Unclosed parenthesis
+// DDM Operation: n2 "Test"
+
+DeviceProcessEvents
+| where (FileName == "cmd.exe" and InitiatingProcessFileName == "w3wp.exe"
+| project TimeGenerated
+;

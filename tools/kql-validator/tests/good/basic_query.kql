@@ -1,0 +1,10 @@
+// TRR0099.WIN.A -- Query 1: Sentinel SecurityEvent
+// DDM Operation: n3 "Spawn Process"
+
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4688
+| where NewProcessName endswith "\\cmd.exe"
+| project TimeGenerated, Computer, NewProcessName, CommandLine
+| sort by TimeGenerated desc
+;

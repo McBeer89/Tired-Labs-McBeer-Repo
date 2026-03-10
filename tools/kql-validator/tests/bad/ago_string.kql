@@ -1,0 +1,7 @@
+// TRR0099.WIN.A -- Bad: ago with string argument
+// DDM Operation: n4 "Test"
+
+DeviceProcessEvents
+| where Timestamp > ago("24h")
+| project Timestamp, DeviceName
+;

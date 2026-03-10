@@ -1,0 +1,20 @@
+// TRR0099.WIN.B -- Query 1: Multiple queries in one file
+// DDM Operation: n2 "Write File"
+
+DeviceFileEvents
+| where Timestamp > ago(24h)
+| where ActionType == "FileCreated"
+| where FileName endswith ".aspx"
+| project Timestamp, DeviceName, FileName, FolderPath
+| sort by Timestamp desc
+;
+
+// TRR0099.WIN.B -- Query 2: Process events correlation
+// DDM Operation: n3 "Spawn Process"
+
+DeviceProcessEvents
+| where Timestamp > ago(24h)
+| where InitiatingProcessFileName == "w3wp.exe"
+| summarize count() by FileName
+| sort by count_ desc
+;

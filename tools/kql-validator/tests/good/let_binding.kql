@@ -1,0 +1,15 @@
+// TRR0099.WIN.A -- Query 2: Let binding with sub-query
+// DDM Operation: n5 "Access Object"
+
+let lookback = 24h;
+let suspicious_procs =
+    DeviceProcessEvents
+    | where Timestamp > ago(lookback)
+    | where InitiatingProcessFileName == "w3wp.exe"
+    | distinct DeviceId;
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| join kind=inner suspicious_procs on DeviceId
+| project Timestamp, DeviceName, FileName, ProcessCommandLine
+| sort by Timestamp desc
+;

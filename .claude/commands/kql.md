@@ -70,6 +70,22 @@ Save to: `Completed TRR Reports\TRR####\win\kql\trr####_win_[a/b/c].kql`
 
 ---
 
+### Step 4b: Validate Query Syntax
+
+Run the KQL Level 1 validator against all generated `.kql` files:
+
+```bash
+python tools/kql-validator/validate.py "Completed TRR Reports/TRR####/win/kql/*.kql"
+```
+
+If **errors** are found: route the error report back to kql-builder with specific fix instructions, re-generate only the queries with errors, and re-validate.
+
+If **warnings only**: proceed — include them in COVERAGE.md under Telemetry Constraints if relevant.
+
+If **PASS**: proceed to Step 5.
+
+---
+
 ### Step 5: Coverage Document
 
 Spawn **kql-builder** to produce `COVERAGE.md`:
