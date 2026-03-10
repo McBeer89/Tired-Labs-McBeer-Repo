@@ -406,6 +406,25 @@ Completed TRR Reports/
       README.md
 ```
 
+### KQL Environment Profile
+
+The file `kql-environment-profile.md` at the repo root tells the kql-builder what your environment actually looks like. Without it, queries use generic Sentinel/Defender schema and produce no baseline exclusions — they'll work syntactically but fire on legitimate noise. Fill it in when you have an environment to target.
+
+**What to gather:**
+
+| Profile Section | What You Need | Where to Get It |
+|---|---|---|
+| SIEM Platform (§1) | Which platform you're querying (Sentinel, MDE, both) | You know this already |
+| Available Log Sources (§2) | Which tables have data flowing into them | Sentinel: run `Usage \| distinct DataType` in Log Analytics, or check the Data Connectors page. MDE: browse Advanced Hunting tables — if a table returns rows, you have it |
+| Available Log Sources (§2) | Which Sysmon event IDs are enabled and what's filtered | Your Sysmon config XML (`Get-SysmonConfiguration` or find the XML your deployment pushes) |
+| Field Name Mappings (§3) | Whether your ingestion pipeline renames standard fields | Run a sample query from a few key tables and check the column headers. If you're on standard Sentinel or MDE schema with no custom parsers, skip this section — the defaults work |
+| Known Baselines (§4) | Legitimate activity that matches attack telemetry patterns | Existing alert suppression/exclusion rules in your SIEM; any "known good" documentation your team maintains; or just run the generic queries for a few days and catalog what fires legitimately. Start empty and fill in iteratively as you tune |
+| Environment Notes (§5) | Non-standard config that affects query logic | Anything you'd tell a new analyst: custom ports, network segmentation, device groups in MDE, AD topology, log retention limits |
+
+The minimum to generate useful queries is §1 (platform) and §2 (available sources). §3 is only needed if your fields are non-standard. §4 grows over time from tuning — it's not something you fill out day one. §5 is free-form for anything else the kql-builder should know.
+
+---
+
 ### Per-Procedure DDM Export Convention
 
 Per-procedure exports follow a shared vs. independent pipeline rule:
