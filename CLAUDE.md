@@ -53,6 +53,22 @@ Do not say a phase is complete when it isn't. Do not rationalize skipping steps.
 - Listing problems without fixing them and calling the phase done.
 - Blowing past a STOP checkpoint without presenting findings to the user.
 
+### Completed TRRs Are Read-Only
+
+Everything under `Completed TRR Reports/` is reviewed, accepted, and **read-only** — with one exception: `kql/` subdirectories are writable for derivative KQL query output.
+
+**Protected (no agent may edit, rename, move, or delete):**
+- `README.md` (the TRR document)
+- `ddms/` (all DDM JSON and PNG files)
+- `images/` (supplementary diagrams)
+
+**Writable (derivative output):**
+- `kql/` (KQL query sets produced by `kql-builder`)
+
+If a reviewer or validator flags issues in a completed TRR's core files, **report the finding to the user** and move on. Do not fix them, do not create log files for them. Fixes to accepted TRRs require a separate manual review cycle outside the automated pipeline.
+
+The `block-completed-trrs.sh` PreToolUse hook enforces this for both file tools and bash commands. The `permissions.deny` entries in `settings.local.json` provide a second layer for the Write/Edit tools.
+
 ---
 
 ## Known Failure Modes
@@ -188,6 +204,7 @@ Use `/wrap` at end of each session. Resume with "pick up where we left off" -- t
 - **trr-researcher**: Technique research -- MITRE ATT&CK, Atomic Red Team, GitHub, security blogs, Microsoft docs. Read-only. Tags every operation `[EIO]`, `[TANGENTIAL]`, `[OPTIONAL]`, or `[?]`. Never fills gaps with assumptions.
 - **ddm-builder**: Constructs DDM operations in Arrows.app JSON. Applies the inclusion test to every operation with explicit verdicts. Knows the red arrow convention. Runs its own validation checklist before returning.
 - **trr-writer**: Writes discipline-neutral TRR prose. 2-4 sentence overviews. No detection language. No re-walked pipelines. No numbered step lists. Condenses Phase 1 artifacts into publication-ready prose. Runs its own self-review checklist before returning.
+- **kql-builder**: Translates completed TRRs and DDMs into per-procedure KQL query sets for Microsoft Sentinel and Defender. Derivative detection-team output -- only runs against completed, validated TRRs. Every query filter traces to a DDM operation; tangential elements are never hardcoded.
 - **coder**: Writes Python, scripts, automation (Source Scraper, DDM tooling). Full file and bash access.
 - **reviewer**: Quality-checks TRR documents and DDM JSON. Returns structured JSON verdicts. A FAIL verdict blocks progression -- resolve all critical issues before proceeding. Has Bash access for on-disk verification (JSON validity, file existence).
 
@@ -244,11 +261,25 @@ WIP TRRs\
       README.md                       <- the TRR document
 ```
 
+When complete, the TRR folder moves to `Completed TRR Reports\`. Derivative outputs like KQL queries are added **after** the move:
+
+```
+Completed TRR Reports\
+  TRR####\
+    win\
+      kql\                            <- KQL derivative queries (post-TRR)
+        trr####_win_a.kql             <- Procedure A queries (queries only, minimal headers)
+        trr####_win_b.kql             <- Procedure B queries
+        COVERAGE.md                   <- coverage summary, blind spots, and query annotations
+      ddms\                           <- (same structure as WIP)
+      README.md
+```
+
+The KQL environment profile lives at the repo root (`kql-environment-profile.md`). It declares available log sources, field name overrides, and known baselines. The kql-builder reads it before generating queries. When empty, queries use generic schema.
+
 Session notes live at `docs/session-notes/` (project root, shared with auto-wrap hook).
 Workflow insights live at `docs/insights/` (project root).
 General plans live at `docs/plans/` (project root).
-
-When complete, the TRR folder moves to `Completed TRR Reports\`.
 
 ---
 
@@ -257,6 +288,7 @@ When complete, the TRR folder moves to `Completed TRR Reports\`.
 - `/trr $TECHNIQUE` -- Full TRR pipeline from scoping through final document
 - `/scope $TECHNIQUE` -- Phase 1 only: scoping document + essential constraints table
 - `/ddm $TRR_ID` -- Phases 2-3: DDM construction and procedure identification
+- `/kql $TRR_ID` -- Generate KQL query sets from a completed TRR and DDM (derivative)
 - `/resolve $TRR_ID` -- Scan TRR folder for unresolved `[?]` markers and resolve via parallel research
 - `/plan $GOAL` -- Break any goal into a researched, actionable plan
 - `/status` -- Show current TRR work state, DDM inventory, and session health
@@ -277,6 +309,7 @@ TRR####: Phase 2 -- DDM draft with telemetry map
 TRR####: Phase 3 -- Procedures identified (WIN.A, WIN.B), DDM validated
 TRR####: Phase 4 -- TRR document complete
 TRR####: Derivative -- Detection methods document
+TRR####: Derivative -- KQL query set for [platform]
 TRR####: Fix -- Post-review corrections
 tools: [description]
 docs: session notes / insights / methodology

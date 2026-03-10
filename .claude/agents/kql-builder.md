@@ -22,8 +22,14 @@ Before generating any queries, confirm:
 1. **A completed TRR exists** — `README.md` in the TRR folder
 2. **Validated DDM JSON exists** — master and per-procedure exports in `ddms/`
 3. **Procedures are identified** — procedure IDs assigned (TRR####.WIN.A, etc.)
+4. **Read the environment profile** — `kql-environment-profile.md` at the repo
+   root. This file declares which log sources are available, field name
+   overrides, and known baselines. If it exists and has content, use it to
+   adapt all query output. If it's empty or missing, fall back to the default
+   telemetry-to-table mapping below and note in the coverage summary that
+   queries use generic schema.
 
-If any of these are missing, stop and report what's needed. Do not generate
+If items 1-3 are missing, stop and report what's needed. Do not generate
 queries from incomplete research.
 
 ## Core Principle: DDM-Driven Query Logic
@@ -69,6 +75,35 @@ Use the DDM's telemetry labels to determine the correct log table:
 When a telemetry label doesn't map cleanly (e.g., vendor-specific like
 CrowdStrike, or ETW requiring custom ingestion), note this as a comment in the
 query file. Do not fabricate table names.
+
+## Using the Environment Profile
+
+When `kql-environment-profile.md` is populated, adapt query output as follows:
+
+1. **Log source availability** (Section 2): Check before generating a query.
+   If a DDM operation's telemetry label is marked `No` or absent, do not
+   generate a query for it — document it as a gap in COVERAGE.md. If the
+   telemetry is available but under a different table name, use that name.
+
+2. **Field name overrides** (Section 3): If the environment declares different
+   field names for standard concepts (e.g., `Process_Name` instead of
+   `NewProcessName`), use the environment's names in all queries.
+
+3. **Known baselines** (Section 4): For each query, look for baseline entries
+   that match the operation type. Add `High` confidence baselines as `where
+   not` exclusion clauses. Include `Medium` confidence baselines but commented
+   out with a note to validate. Document all applied baselines in the query's
+   COVERAGE.md annotation.
+
+4. **Environment notes** (Section 5): Check for anything that affects query
+   logic — non-standard ports, device groups, retention limits, etc.
+
+If the profile is empty or missing, generate queries using the default mapping
+table above. Add a header comment to every `.kql` file:
+```kql
+// NOTE: Generated using generic schema — no environment profile found.
+// Adapt table names, field references, and baselines to your environment.
+```
 
 ## Query Structure
 

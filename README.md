@@ -85,6 +85,7 @@ If you already have a `~/.claude/settings.json`, merge the `hooks` and `permissi
 
 ```bash
 chmod +x .claude/hooks/trr-prose-guard.sh
+chmod +x .claude/hooks/block-completed-trrs.sh
 ```
 
 ### 4. Create Project-Level Settings
@@ -94,16 +95,37 @@ The project-level `.claude/settings.local.json` is gitignored because it accumul
 ```json
 {
   "permissions": {
-    "allow": []
+    "allow": [],
+    "deny": [
+      "Edit(Completed TRR Reports/**/README.md)",
+      "Edit(Completed TRR Reports/**/ddms/**)",
+      "Edit(Completed TRR Reports/**/images/**)",
+      "Write(Completed TRR Reports/**/README.md)",
+      "Write(Completed TRR Reports/**/ddms/**)",
+      "Write(Completed TRR Reports/**/images/**)"
+    ]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
             "command": ".claude/hooks/trr-prose-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/block-completed-trrs.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/block-completed-trrs.sh"
           }
         ]
       }
@@ -134,7 +156,7 @@ Open Claude Code in the repo and run `/status`. You should see the repo state an
 
 This configuration turns Claude Code into a gated, multi-agent TRR production pipeline with four layers of enforcement:
 
-**1. Enforcement hooks** — PreToolUse hooks block detection-oriented language in TRR files before they're written, block commits containing `[?]` markers, and prevent destructive bash commands. A prompt-based Stop hook powered by a fast model catches rationalization patterns (declaring incomplete work done, hedging on the inclusion test, blowing past phase gates).
+**1. Enforcement hooks** — PreToolUse hooks block detection-oriented language in TRR files before they're written, block commits containing `[?]` markers, prevent destructive bash commands, and protect completed TRR core files (README.md, ddms/, images/) from edits while allowing KQL derivative writes. A prompt-based Stop hook powered by a fast model catches rationalization patterns (declaring incomplete work done, hedging on the inclusion test, blowing past phase gates).
 
 **2. Hard failure-mode rules** — The CLAUDE.md includes explicit "never do this" constraints learned from production TRR work: detection language creep, re-walked shared pipelines, grouped telemetry, bare telemetry labels, prerequisites modeled as inline steps, tool-focused analysis, Phase 1 artifact leakage, and telemetry enablement guidance. Nine documented failure modes, each with specific symptoms and corrections.
 
@@ -149,17 +171,20 @@ This configuration turns Claude Code into a gated, multi-agent TRR production pi
 ```
 repo-root/
 ├── CLAUDE.md                              ← Orchestrator instructions (rules, failure modes, session discipline)
+├── kql-environment-profile.md             ← Log sources, field mappings, known baselines for KQL generation
 ├── .claude/
 │   ├── agents/
 │   │   ├── trr-researcher.md              ← Research with inclusion test tagging
 │   │   ├── ddm-builder.md                 ← DDM JSON with per-operation verdicts
 │   │   ├── trr-writer.md                  ← Discipline-neutral TRR prose
+│   │   ├── kql-builder.md                 ← KQL query generation from DDMs
 │   │   ├── coder.md                       ← Scripts, automation, tooling
 │   │   └── reviewer.md                    ← Quality gate with JSON verdicts + Bash verification
 │   ├── commands/
 │   │   ├── trr.md                         ← /trr — full pipeline with enforcement
 │   │   ├── scope.md                       ← /scope — Phase 1 scoping
 │   │   ├── ddm.md                         ← /ddm — Phases 2-3
+│   │   ├── kql.md                         ← /kql — KQL derivative queries
 │   │   ├── review.md                      ← /review — standalone review
 │   │   ├── resolve.md                     ← /resolve — hunt and fix [?] markers
 │   │   ├── plan.md                        ← /plan — goal decomposition
@@ -168,7 +193,8 @@ repo-root/
 │   │   ├── commit.md                      ← /commit — TRR commit convention
 │   │   └── insights.md                    ← /insights — workflow pattern analysis
 │   ├── hooks/
-│   │   └── trr-prose-guard.sh             ← PreToolUse: blocks detection language in TRR files
+│   │   ├── trr-prose-guard.sh             ← PreToolUse: blocks detection language in TRR files
+│   │   └── block-completed-trrs.sh        ← PreToolUse: protects completed TRR core files (allows kql/ writes)
 │   └── settings.local.json               ← Project-level settings (hooks, permissions) — gitignored
 ├── docs/
 │   ├── session-notes/                     ← /wrap and auto-wrap output
@@ -204,7 +230,7 @@ Settings are split across two layers that merge at runtime:
 
 **Global** (`~/.claude/settings.json`): Privacy env vars, credential deny rules, shell config protection, `alwaysThinkingEnabled`, `cleanupPeriodDays: 365`, and hooks that apply to all projects — `block-destructive.sh`, `code-quality-check.sh`, `bash-audit-log.sh`, `auto-wrap.sh`, `notify-stop.sh`, and a generic anti-rationalization Stop prompt.
 
-**Project** (`.claude/settings.local.json`): TRR-specific hooks that layer on top of global — `trr-prose-guard.sh` on Write/Edit operations, and a TRR-specific anti-rationalization Stop prompt with 10 domain-specific rejection patterns. Also contains accumulated permission allows for research domains.
+**Project** (`.claude/settings.local.json`): TRR-specific hooks that layer on top of global — `trr-prose-guard.sh` on Write/Edit operations, `block-completed-trrs.sh` on Write/Edit/Bash operations (protects completed TRR core files, allows kql/ writes), permission deny rules for completed TRR paths, and a TRR-specific anti-rationalization Stop prompt with 10 domain-specific rejection patterns. Also contains accumulated permission allows for research domains.
 
 The project file is gitignored (machine-specific). The global file lives outside the repo.
 
@@ -229,6 +255,7 @@ The project file is gitignored (machine-specific). The global file lives outside
 | Hook | Event | What It Does |
 |------|-------|-------------|
 | `trr-prose-guard.sh` | PreToolUse (Write/Edit) | Scans TRR markdown for detection language, tool-focused analysis, numbered step lists, bare telemetry labels. Blocks with specific feedback. |
+| `block-completed-trrs.sh` | PreToolUse (Write/Edit/Bash) | Blocks edits to core files (README.md, ddms/, images/) in `Completed TRR Reports/`. Allows writes to `kql/` subdirectories for derivative output. |
 | Stop prompt (TRR-specific) | Stop | 10-pattern TRR rationalization check: inclusion test hedging, phase gate skipping, `[?]` rationalization, reviewer FAIL acceptance, incomplete DDM verdicts |
 
 ---
@@ -296,6 +323,7 @@ If any pattern matches, the hook rejects the response with specific fix instruct
 | `/trr <technique>` | Full pipeline: Step 0 setup → Phase 1 scope → Phase 2 DDM → Phase 3 procedures → Phase 4 TRR document |
 | `/scope <technique>` | Phase 1 only: scoping document + essential constraints table |
 | `/ddm <TRR ID>` | Phases 2-3: DDM construction + procedure identification (requires completed Phase 1) |
+| `/kql <TRR ID>` | Generate KQL query sets from completed TRR and DDM (derivative detection-team output) |
 | `/resolve <TRR ID>` | Scan TRR folder for `[?]` markers, triage by type, resolve via parallel research |
 | `/review [target]` | Run reviewer against TRR document and/or DDM files |
 | `/plan <goal>` | Decompose any goal into a researched, actionable plan |
@@ -313,10 +341,11 @@ If any pattern matches, the hook rejects the response with specific fix instruct
 | trr-researcher | Opus | Read, Glob, Grep, WebSearch, WebFetch | Research with inclusion test tagging, fetch discipline, confidence labels |
 | ddm-builder | Opus | Read, Write, Edit, Glob, Grep | DDM JSON with per-operation verdicts, shared/independent pipeline export convention |
 | trr-writer | Opus | Read, Write, Edit, Glob, Grep | Discipline-neutral TRR prose, Phase 1 condensation, self-review checklist |
-| coder | Sonnet | Read, Write, Edit, Grep, Glob, Bash | Scripts, automation, Source Scraper, DDM tooling |
+| kql-builder | Opus | Read, Write, Edit, Glob, Grep | DDM-to-KQL translation, per-procedure query sets, coverage summaries |
+| coder | Opus | Read, Write, Edit, Grep, Glob, Bash | Scripts, automation, Source Scraper, DDM tooling |
 | reviewer | Opus | Read, Glob, Grep, Bash | Quality gate with JSON verdicts, on-disk verification (JSON validity, file existence) |
 
-The orchestrator (you talking to Claude Code) runs on whatever model you've selected. The four quality-critical agents (researcher, DDM builder, writer, reviewer) run on Opus for reasoning depth. The coder runs on Sonnet — its tasks are structured implementation, not judgment calls.
+The orchestrator (you talking to Claude Code) runs on whatever model you've selected. All six subagents run on Opus.
 
 ---
 
@@ -363,6 +392,20 @@ WIP TRRs/
       README.md                       ← The TRR document
 ```
 
+When complete, the TRR folder moves to `Completed TRR Reports/`. Derivative outputs like KQL queries are added **after** the move. The kql-builder reads `kql-environment-profile.md` at the repo root to adapt queries to your environment's log sources, field names, and known baselines:
+
+```
+Completed TRR Reports/
+  TRR####/
+    win/
+      kql/                            ← KQL derivative queries (post-TRR)
+        trr####_win_a.kql             ← Procedure A queries (queries only, minimal headers)
+        trr####_win_b.kql             ← Procedure B queries
+        COVERAGE.md                   ← Coverage summary, blind spots, and query annotations
+      ddms/                           ← (same structure as WIP)
+      README.md
+```
+
 ### Per-Procedure DDM Export Convention
 
 Per-procedure exports follow a shared vs. independent pipeline rule:
@@ -381,6 +424,7 @@ TRR####: Phase 2 -- DDM draft with telemetry map
 TRR####: Phase 3 -- Procedures identified (WIN.A, WIN.B), DDM validated
 TRR####: Phase 4 -- TRR document complete
 TRR####: Derivative -- Detection methods document
+TRR####: Derivative -- KQL query set for [platform]
 TRR####: Fix -- Post-review corrections
 tools: [description]
 docs: session notes / insights / methodology

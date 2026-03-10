@@ -27,7 +27,16 @@ If any required files are missing, **STOP**. Report what's needed. Do not genera
 
 ---
 
-### Step 2: Research and Parse
+### Step 2: Read Environment Profile
+
+Check for `kql-environment-profile.md` at the repo root. If it exists and has
+content, it governs log source availability, field names, and known baselines
+for all generated queries. Pass it to the kql-builder in Step 4. If empty or
+missing, queries will use generic schema — note this in COVERAGE.md.
+
+---
+
+### Step 3: Research and Parse
 
 Spawn **2 subagents in parallel**:
 
@@ -47,9 +56,9 @@ Wait for both to return.
 
 ---
 
-### Step 3: Generate Query Files
+### Step 4: Generate Query Files
 
-Spawn **kql-builder** with the combined research. For each procedure:
+Spawn **kql-builder** with the combined research and environment profile. For each procedure:
 
 1. Map each operation's telemetry labels to log tables (Sentinel + Defender)
 2. Build queries that filter on immutable attributes from DDM node properties
@@ -61,7 +70,7 @@ Save to: `Completed TRR Reports\TRR####\win\kql\trr####_win_[a/b/c].kql`
 
 ---
 
-### Step 4: Coverage Document
+### Step 5: Coverage Document
 
 Spawn **kql-builder** to produce `COVERAGE.md`:
 
@@ -77,7 +86,7 @@ Save to: `Completed TRR Reports\TRR####\win\kql\COVERAGE.md`
 
 ---
 
-### Step 5: Review
+### Step 6: Review
 
 Spawn **reviewer** to validate:
 
@@ -94,7 +103,7 @@ Resolve reviewer findings.
 
 ---
 
-### Step 6: Present Results
+### Step 7: Present Results
 
 Present:
 - List of `.kql` files created
