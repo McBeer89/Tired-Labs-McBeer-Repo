@@ -1,0 +1,49 @@
+// TRR0011.AD.A — Query 1: Microsoft Sentinel SecurityEvent (Event 4662)
+// DDM Operation: n6 "Access AD Object"
+
+let ReplicationPermissionGUIDs = dynamic([
+    "1131f6aa-9c07-11d1-f79f-00c04fc2dcd2",   // DS-Replication-Get-Changes
+    "1131f6ad-9c07-11d1-f79f-00c04fc2dcd2",   // DS-Replication-Get-Changes-All
+    "89e95b76-444d-4c62-991a-0facbeda640c"    // DS-Replication-Get-Changes-In-Filtered-Set
+]);
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4662
+| where ObjectServer == "DS"
+| where ObjectType has "19195a5b-6da0-11d0-afd3-00c04fd930c9"
+| where OperationType == "Object Access"
+| where AccessMask == "0x100" or AccessMask == "256"
+| where Properties has_any (ReplicationPermissionGUIDs)
+| extend IsMachineAccount = SubjectUserName endswith "$"
+| project
+    TimeGenerated,
+    Computer,
+    SubjectUserSid,
+    SubjectUserName,
+    SubjectDomainName,
+    IsMachineAccount,
+    ObjectServer,
+    ObjectType,
+    OperationType,
+    AccessMask,
+    Properties
+| sort by TimeGenerated desc
+;
+
+
+// TRR0011.AD.A — Query 2: Microsoft Defender for Identity IdentityDirectoryEvents
+// DDM Operation: n6 "Access AD Object"
+
+IdentityDirectoryEvents
+| where Timestamp > ago(24h)
+| where ActionType == "DCSync"
+| project
+    Timestamp,
+    ActionType,
+    TargetDeviceName,
+    AccountName,
+    AccountDomain,
+    AccountSid,
+    AdditionalFields
+| sort by Timestamp desc
+;
