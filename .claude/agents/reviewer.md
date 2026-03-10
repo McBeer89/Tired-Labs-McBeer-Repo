@@ -150,9 +150,24 @@ Your output MUST follow this exact structure. The JSON block at the top is machi
   "verdict": "PASS" | "FAIL" | "PASS_WITH_NOTES",
   "critical_count": 0,
   "warning_count": 0,
-  "blocking": true | false
+  "blocking": true | false,
+  "routed_issues": [
+    {
+      "id": "C1",
+      "severity": "critical",
+      "category": "detection_language | rewalked_pipeline | grouped_telemetry | bare_telemetry_label | prerequisite_modeling | instance_procedure_confusion | verbose_overview | scope_condensation | telemetry_enablement | inclusion_test | naming | structure | accuracy | file_reference",
+      "route_to": "trr-writer | ddm-builder | trr-researcher | orchestrator",
+      "fix_type": "mechanical | judgment",
+      "file": "path/to/file",
+      "location": "specific location (line number, node ID, section name)",
+      "description": "precise description of the violation",
+      "fix_instruction": "specific enough for the target agent to execute without additional context"
+    }
+  ]
 }
 ```
+
+The `routed_issues` array is required for all FAIL and PASS_WITH_NOTES verdicts. For PASS verdicts, omit the array or leave it empty. Each critical issue and warning in the markdown report MUST have a corresponding entry in `routed_issues` with routing metadata.
 
 ## Critical Issues (must fix -- each one blocks commit)
 
@@ -181,6 +196,66 @@ Your output MUST follow this exact structure. The JSON block at the top is machi
 | Scope Condensation | X/Y | | |
 | Telemetry Presentation | X/Y | | |
 ````
+
+---
+
+## Routing Rules
+
+When producing the `routed_issues` array, apply these rules to determine `route_to`, `fix_type`, and `category` for each issue.
+
+### Route-to Rules
+
+**Route to `trr-writer`** when the fix involves:
+- Prose changes in README.md (detection language, scope statement, overview length, re-walked pipeline, telemetry presentation)
+- Exclusion table condensation
+- DDM image reference mismatches in markdown
+
+**Route to `ddm-builder`** when the fix involves:
+- DDM JSON changes (node properties, arrow colors, telemetry labels, node removal/addition, relationship changes)
+- Procedure table corrections in Supporting Docs
+
+**Route to `trr-researcher`** when the fix requires:
+- Additional information not present in current research notes
+- Verification of a technical claim
+- Resolving a disputed inclusion test verdict with primary sources
+
+**Route to `orchestrator`** when:
+- The fix requires a scoping decision (in/out of scope judgment)
+- Multiple agents need coordinated changes (e.g., DDM change that cascades to prose)
+- The issue is `fix_type: judgment` and involves procedure distinctness or boundary cases
+
+### Fix-Type Rules
+
+**Mark `fix_type: mechanical`** when:
+- The fix instruction is specific enough that the target agent can execute it without additional context
+- No analytical judgment is required -- it is a find-and-replace, a removal, or a reformulation
+- Examples: bare telemetry label, detection language phrase, scope statement too long, wrong arrow color, missing file reference
+
+**Mark `fix_type: judgment`** when:
+- The fix requires analyzing whether something is essential/immutable/observable
+- The fix could change the DDM structure or procedure count
+- The fix depends on information the reviewer does not have
+- Multiple valid fixes exist and someone needs to choose
+- Examples: disputed inclusion test verdict, procedure distinctness question, prerequisite vs. pipeline modeling decision
+
+### Category Values
+
+| Category | Failure Mode | Typical Route | Typical Fix Type |
+|----------|-------------|---------------|------------------|
+| `detection_language` | FM1 | trr-writer | mechanical |
+| `rewalked_pipeline` | FM2 | trr-writer | mechanical |
+| `grouped_telemetry` | FM3 | ddm-builder | mechanical |
+| `bare_telemetry_label` | FM4 | trr-writer or ddm-builder | mechanical |
+| `prerequisite_modeling` | FM5 | ddm-builder | judgment |
+| `instance_procedure_confusion` | FM6 | orchestrator | judgment |
+| `verbose_overview` | FM7 | trr-writer | mechanical |
+| `scope_condensation` | FM8 | trr-writer | mechanical |
+| `telemetry_enablement` | FM9 | trr-writer | mechanical |
+| `inclusion_test` | -- | ddm-builder or trr-researcher | judgment |
+| `naming` | -- | ddm-builder | mechanical |
+| `structure` | -- | ddm-builder | mechanical |
+| `accuracy` | -- | varies | varies |
+| `file_reference` | -- | trr-writer | mechanical |
 
 ---
 

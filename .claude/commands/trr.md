@@ -118,7 +118,7 @@ Save exports to: `WIP TRRs\TRR####\win\ddms\trr####_win_[a/b/c].json`
 
 Then spawn **reviewer** to validate the master DDM and procedure exports against all checklists.
 
-**If reviewer returns FAIL**: Fix all critical issues. Re-run reviewer. Do not proceed until PASS or PASS_WITH_NOTES.
+**If reviewer returns FAIL**: Run `/resolve-review TRR####` to auto-route mechanical fixes and surface judgment calls. If `/resolve-review` achieves PASS or PASS_WITH_NOTES, proceed. If it escalates (second FAIL), STOP and resolve remaining issues before continuing. If the verdict does not contain `routed_issues` (legacy format), fix issues manually and re-run `/review`.
 
 **Commit this phase** (after reviewer passes):
 ```
@@ -141,7 +141,7 @@ Writer produces: `WIP TRRs\TRR####\win\README.md`
 
 Then spawn **reviewer** to run the full TRR document checklist.
 
-**If reviewer returns FAIL**: Fix all critical issues. Re-run reviewer. Do not commit a FAIL'd document.
+**If reviewer returns FAIL**: Run `/resolve-review TRR####` to auto-route mechanical fixes and surface judgment calls. If `/resolve-review` achieves PASS or PASS_WITH_NOTES, proceed to commit. If it escalates (second FAIL), STOP and resolve remaining issues before committing. If the verdict does not contain `routed_issues` (legacy format), fix issues manually and re-run `/review`.
 
 **Commit this phase** (after reviewer passes):
 ```

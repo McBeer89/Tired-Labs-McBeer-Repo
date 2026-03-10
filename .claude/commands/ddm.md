@@ -59,7 +59,7 @@ Save exports to: `WIP TRRs\TRR####\win\ddms\trr####_win_[a/b/c].json`
 
 Spawn **reviewer** against all DDM files (master + per-procedure exports).
 
-**If FAIL**: Fix all critical issues. Re-run reviewer. Do not proceed.
+**If FAIL**: Run `/resolve-review $TRR_ID` to auto-route mechanical fixes and surface judgment calls. If `/resolve-review` achieves PASS or PASS_WITH_NOTES, proceed. If it escalates (second FAIL), STOP and resolve remaining issues before continuing. If the verdict does not contain `routed_issues` (legacy format), fix issues manually and re-run `/review`.
 **If PASS_WITH_NOTES**: Recommend fixing warnings. May proceed.
 **If PASS**: Confirm DDM is ready.
 

@@ -75,8 +75,8 @@ Present a combined summary:
 
 ### Step 5: Enforce
 
-- **If any verdict is FAIL**: State clearly that this TRR cannot be committed or advanced to the next phase until all critical issues are resolved. List the specific fixes needed.
-- **If PASS_WITH_NOTES**: State that progression is allowed but recommend fixing warnings first.
+- **If any verdict is FAIL**: State clearly that this TRR cannot be committed or advanced to the next phase until all critical issues are resolved. List the specific fixes needed. If the verdict contains `routed_issues`, suggest: "Run `/resolve-review $ARGUMENTS` to auto-route mechanical fixes and surface judgment calls, or fix manually and re-run `/review`."
+- **If PASS_WITH_NOTES**: State that progression is allowed but recommend fixing warnings first. If warnings have `routed_issues`, note that `/resolve-review` can auto-fix mechanical warnings too.
 - **If all PASS**: Confirm the artifact is ready for commit.
 
-After fixes are made, tell the user to run `/review` again to verify. Do not self-certify fixes — the reviewer must re-validate.
+After manual fixes are made, tell the user to run `/review` again to verify. Do not self-certify fixes — the reviewer must re-validate.

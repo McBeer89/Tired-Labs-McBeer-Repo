@@ -60,6 +60,7 @@ Read the gathered data and look for these patterns:
 **Quality Gate Patterns:**
 - How many reviewer FAIL verdicts occurred? What failure categories?
 - How many reviewer PASS_WITH_NOTES? What were the notes about?
+- How many `/resolve-review` runs occurred? How many were fully auto-resolved (mechanical fixes only) vs. escalated to the user (judgment calls)? What `category` values appeared most often in `routed_issues`? This data is the most precise signal for routing rule tuning.
 - How many times did the trr-prose-guard hook likely fire? (Look for fix commits mentioning detection language.)
 - How many times did the anti-rationalization Stop hook likely reject? (Hard to measure directly — look for sessions with multiple attempts at the same phase.)
 
@@ -74,7 +75,7 @@ Read the gathered data and look for these patterns:
   - Verbose overviews (FM7)
   - Phase 1 artifact leakage (FM8)
   - Telemetry enablement guidance (FM9)
-- Look for patterns in fix commits, reviewer verdicts, and session note "Decisions Made" sections.
+- Look for patterns in fix commits, reviewer verdicts, `/resolve-review` outcomes, and session note "Decisions Made" sections. The `routed_issues` categories in reviewer verdicts map directly to these failure modes and are a more precise signal than commit-message archaeology.
 
 **Open Question Lifecycle:**
 - How many `[?]` markers exist across all WIP TRRs?

@@ -188,7 +188,7 @@ This configuration turns Claude Code into a gated, multi-agent TRR production pi
 
 **2. Hard failure-mode rules** — The CLAUDE.md includes explicit "never do this" constraints learned from production TRR work: detection language creep, re-walked shared pipelines, grouped telemetry, bare telemetry labels, prerequisites modeled as inline steps, tool-focused analysis, Phase 1 artifact leakage, and telemetry enablement guidance. Nine documented failure modes, each with specific symptoms and corrections.
 
-**3. Reviewer enforcement** — The reviewer agent returns structured JSON verdicts (`PASS`/`FAIL`/`PASS_WITH_NOTES`) with `blocking: true/false`. Commands check these verdicts and block progression on FAIL. A FAIL means the work doesn't get committed until issues are fixed and the reviewer passes on re-run.
+**3. Reviewer enforcement** — The reviewer agent returns structured JSON verdicts (`PASS`/`FAIL`/`PASS_WITH_NOTES`) with `blocking: true/false` and `routed_issues` metadata. On FAIL, `/resolve-review` auto-routes mechanical fixes to the appropriate subagents (trr-writer for prose, ddm-builder for JSON) and surfaces judgment calls to the user. A maximum of one automatic retry prevents token-burning loops.
 
 **4. Session lifecycle management** — `/wrap` captures structured handoff notes at phase boundaries. `/insights` analyzes session patterns over time. Auto-wrap fires before context compaction as a safety net. The orchestrator proactively recommends session breaks when context gets heavy.
 
@@ -215,6 +215,7 @@ repo-root/
 │   │   ├── kql.md                         ← /kql — KQL derivative queries
 │   │   ├── review.md                      ← /review — standalone review
 │   │   ├── resolve.md                     ← /resolve — hunt and fix [?] markers
+│   │   ├── resolve-review.md              ← /resolve-review — auto-route reviewer FAIL fixes
 │   │   ├── plan.md                        ← /plan — goal decomposition
 │   │   ├── status.md                      ← /status — repo, TRR state, session health
 │   │   ├── wrap.md                        ← /wrap — end-of-session handoff
@@ -312,14 +313,14 @@ You type /trr T1505.003 win
   │
   ├→ Phase 3: Researcher + DDM builder → procedures + per-procedure exports
   │   └→ Reviewer runs → structured JSON verdict
-  │   └→ If FAIL: fix and re-review (no progression until PASS)
+  │   └→ If FAIL: /resolve-review auto-routes fixes → re-review
   │   └→ Commit phase artifacts
   │   └→ STOP gate: presents procedures + verdict
   │
   ├→ Phase 4: TRR writer runs → README.md
   │   └→ trr-prose-guard fires on write
   │   └→ Reviewer runs → structured JSON verdict
-  │   └→ If FAIL: fix and re-review
+  │   └→ If FAIL: /resolve-review auto-routes fixes → re-review
   │   └→ Commit phase artifacts
   │   └→ block-destructive hook blocks commit if [?] in staged files
   │
@@ -357,6 +358,7 @@ If any pattern matches, the hook rejects the response with specific fix instruct
 | `/ddm <TRR ID>` | Phases 2-3: DDM construction + procedure identification (requires completed Phase 1) |
 | `/kql <TRR ID>` | Generate KQL query sets from completed TRR and DDM (derivative detection-team output) |
 | `/resolve <TRR ID>` | Scan TRR folder for `[?]` markers, triage by type, resolve via parallel research |
+| `/resolve-review <TRR ID>` | Auto-route reviewer FAIL fixes to subagents (mechanical auto-fixed, judgment escalated), then re-review. Max one automatic retry. |
 | `/review [target]` | Run reviewer against TRR document and/or DDM files |
 | `/plan <goal>` | Decompose any goal into a researched, actionable plan |
 | `/status` | Show repo state, active TRR phase status, DDM inventory, session health |

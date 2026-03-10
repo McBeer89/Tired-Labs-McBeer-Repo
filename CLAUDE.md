@@ -183,7 +183,7 @@ Run `/wrap` when you notice:
 2. **Summarizing your own earlier findings** -- if you're reconstructing DDM decisions or scoping rationale from memory instead of reading them from artifacts, context is stale.
 3. **Phase boundary reached** -- default to wrapping at every phase gate, not pushing into the next phase. A fresh session for the next phase is almost always the right call.
 4. **Heavy source fetches** -- ATT&CK pages, Atomic Red Team test pages, security blog posts, and Microsoft documentation fill context fast.
-5. **Second reviewer FAIL** -- the fix-and-re-review cycle is context-intensive. If the reviewer has returned FAIL twice in the same session, wrap and continue fixes in a fresh session.
+5. **Second reviewer FAIL after `/resolve-review`** -- `/resolve-review` handles the first retry automatically (mechanical fixes + re-review). If it escalates with a second FAIL, the remaining issues likely need judgment or a fresh perspective. Wrap and continue in a fresh session.
 
 Tell the user directly: "Context is getting heavy. I'm going to run `/wrap` to capture our progress, then we should continue in a fresh session."
 
@@ -206,7 +206,7 @@ Use `/wrap` at end of each session. Resume with "pick up where we left off" -- t
 - **trr-writer**: Writes discipline-neutral TRR prose. 2-4 sentence overviews. No detection language. No re-walked pipelines. No numbered step lists. Condenses Phase 1 artifacts into publication-ready prose. Runs its own self-review checklist before returning.
 - **kql-builder**: Translates completed TRRs and DDMs into per-procedure KQL query sets for Microsoft Sentinel and Defender. Derivative detection-team output -- only runs against completed, validated TRRs. Every query filter traces to a DDM operation; tangential elements are never hardcoded.
 - **coder**: Writes Python, scripts, automation (Source Scraper, DDM tooling). Full file and bash access.
-- **reviewer**: Quality-checks TRR documents and DDM JSON. Returns structured JSON verdicts. A FAIL verdict blocks progression -- resolve all critical issues before proceeding. Has Bash access for on-disk verification (JSON validity, file existence).
+- **reviewer**: Quality-checks TRR documents and DDM JSON. Returns structured JSON verdicts with `routed_issues` metadata that enables auto-routing of fixes to the appropriate subagent. A FAIL verdict blocks progression -- run `/resolve-review` to auto-route mechanical fixes and surface judgment calls. Has Bash access for on-disk verification (JSON validity, file existence).
 
 ### Subagent Output Trust Policy
 
@@ -215,7 +215,7 @@ Do not blindly trust subagent output. Before accepting any subagent return:
 1. Scan for `[?]` markers -- if present, the research is incomplete. Send the subagent back or research further yourself.
 2. Check DDM builder output against the inclusion test -- even the builder can slip tangential elements through.
 3. Check writer output for detection language -- the trr-writer has a self-review checklist, but catch anything it missed.
-4. If the reviewer returns FAIL, do not rationalize it away. Fix every critical issue. Re-run the reviewer after fixes.
+4. If the reviewer returns FAIL, do not rationalize it away. Run `/resolve-review` to auto-route mechanical fixes to the appropriate subagents and surface judgment calls to the user. If `/resolve-review` escalates (second FAIL), resolve remaining issues manually before proceeding. Do not declare a FAIL resolved without a passing re-review.
 5. **Check writer output for scope condensation** -- verify the exclusion table doesn't contain sub-technique ID exclusions obvious from the ATT&CK Mapping field, cross-platform exclusions already covered by the Platforms field, or generic tangential boilerplate. Scope statement must be one sentence. If these bloat symptoms are present, the writer copied Phase 1 artifacts instead of condensing them -- send it back. (A well-condensed table is typically 3-5 rows, but more is acceptable if the technique genuinely warrants it.)
 6. **Check writer output for telemetry enablement tables** -- if Technical Background contains a table with "Default State" or "Enablement" columns, send it back with instructions to rewrite telemetry facts as inline prose. Telemetry constraint facts belong in the TRR; deployment recommendations do not.
 
@@ -290,6 +290,7 @@ General plans live at `docs/plans/` (project root).
 - `/ddm $TRR_ID` -- Phases 2-3: DDM construction and procedure identification
 - `/kql $TRR_ID` -- Generate KQL query sets from a completed TRR and DDM (derivative)
 - `/resolve $TRR_ID` -- Scan TRR folder for unresolved `[?]` markers and resolve via parallel research
+- `/resolve-review $TRR_ID` -- Auto-route reviewer FAIL fixes to subagents (mechanical auto-fixed, judgment escalated), re-review (max one retry)
 - `/plan $GOAL` -- Break any goal into a researched, actionable plan
 - `/status` -- Show current TRR work state, DDM inventory, and session health
 - `/review [files]` -- Spawn reviewer against specified files or current TRR
@@ -322,3 +323,4 @@ docs: session notes / insights / methodology
 - **Cline (VS Code)**: For repetitive file operations, git commits, and mechanical tasks. Can use a local LLM for cost-free execution. Flag tasks as "Cline-suitable" when they don't need deep reasoning.
 - **Arrows.app**: For DDM visualization. You generate JSON, the user pastes it into Arrows.app.
 - **TRR Source Scraper**: Python tool in `tools/trr-source-scraper/` for automated source gathering. Use the coder subagent for modifications.
+- **KQL Validator**: Python tool in `tools/kql-validator/` for validating generated `.kql` files. Runs automatically as Step 4b in the `/kql` pipeline. Level 1 (syntax) is active; Level 2 (schema) and Level 3 (live) are stubs awaiting environment profile and Azure credentials respectively.
