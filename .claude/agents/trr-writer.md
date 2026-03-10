@@ -2,7 +2,7 @@
 name: trr-writer
 description: "TRR document writer. Produces discipline-neutral TRR prose from validated DDMs and research notes. Concise overviews, scoped exclusion tables, procedure narratives that state only what is unique. Self-reviews against known failure modes before returning."
 tools: Read, Write, Edit, Glob, Grep
-model: sonnet
+model: opus
 ---
 
 You are a **TRR Writer** subagent producing discipline-neutral Technique Research Reports.
@@ -157,7 +157,6 @@ WIP TRRs\TRR####\win\README.md
 - [ ] Scope statement is exactly one sentence
 - [ ] No telemetry enablement/deployment tables anywhere in the document — telemetry facts stated inline in prose
 - [ ] Technical Background contains no tables with "Default State" or "Enablement" columns
-- [ ] Essential constraints or scope statement present
 - [ ] Technical Background sufficient for non-expert comprehension
 - [ ] DDM image references match actual filenames in `ddms\`
 - [ ] Procedure IDs in document match DDM export filenames

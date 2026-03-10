@@ -107,6 +107,17 @@ Symptoms of this failure:
 
 ## Session Discipline
 
+### Starting a Session
+
+When starting a new session or resuming work:
+
+1. Check `docs/session-notes/` for the latest handoff note.
+2. Read the active TRR's current artifacts -- `README.md` if it exists, latest DDM JSON, and the Phase 1 scoping document.
+3. Run `/status` to confirm repository state and identify any stale session notes or unresolved markers.
+4. Present the "What's Next" items from the session note and ask the user to confirm or adjust before beginning work.
+
+If starting a completely fresh TRR (no session notes), confirm the technique, platform, and TRR number with the user before spawning any subagents.
+
 ### One Phase Per Session (Default)
 
 Each TRR phase is a natural session boundary. The default expectation:
@@ -129,6 +140,8 @@ Every `/trr` and `/scope` command has STOP checkpoints between phases. These are
 
 Do not pre-emptively start the next phase while presenting the current one. Do not say "I'll go ahead and start Phase 3 while you review Phase 2." Phases are sequential and gated.
 
+If `[?]` markers are blocking progression at a stop gate, use `/resolve $TRR_ID` to hunt and resolve them via parallel research before re-attempting the current phase.
+
 ### When to Recommend a New Session
 
 Tell the user to start a fresh session when:
@@ -142,13 +155,41 @@ Say it directly: "Phase 2 is committed. I'd recommend starting a fresh session f
 
 ---
 
+## Context Awareness & Session Health
+
+Context quality degrades as the window fills. TRR research sessions are especially context-heavy -- subagent returns carry ATT&CK pages, blog post summaries, and DDM JSON payloads. Actively manage this.
+
+### Proactive Wrap Triggers
+
+Run `/wrap` when you notice:
+
+1. **3+ subagent round-trips** in one session -- each return adds significant context from research pages, DDM JSON, or writer output.
+2. **Summarizing your own earlier findings** -- if you're reconstructing DDM decisions or scoping rationale from memory instead of reading them from artifacts, context is stale.
+3. **Phase boundary reached** -- default to wrapping at every phase gate, not pushing into the next phase. A fresh session for the next phase is almost always the right call.
+4. **Heavy source fetches** -- ATT&CK pages, Atomic Red Team test pages, security blog posts, and Microsoft documentation fill context fast.
+5. **Second reviewer FAIL** -- the fix-and-re-review cycle is context-intensive. If the reviewer has returned FAIL twice in the same session, wrap and continue fixes in a fresh session.
+
+Tell the user directly: "Context is getting heavy. I'm going to run `/wrap` to capture our progress, then we should continue in a fresh session."
+
+### Safety Net: Auto-Wrap Hook
+
+The global `auto-wrap.sh` hook fires before compaction, writing a lightweight session note to `docs/session-notes/`. This is the emergency fallback -- it captures git state but not intent, decisions, or subagent findings. **Always prefer manual `/wrap` over relying on auto-wrap.**
+
+### Session Handoff
+
+Use `/wrap` at end of each session. Resume with "pick up where we left off" -- the orchestrator will find the latest note in `docs/session-notes/`, read it alongside current TRR artifacts, and present the "What's Next" items.
+
+**Important:** Session notes use the `OPEN:` prefix for unresolved questions (e.g., `OPEN: Does ETW EID 154 fire for reflective loads?`). Do NOT use `[?]` markers in session notes -- the global `block-destructive.sh` hook blocks commits containing `[?]` in staged files. The `[?]` markers live in TRR research files; session notes document those questions using `OPEN:` so they can be committed cleanly.
+
+---
+
 ## Your Subagents
 
 - **trr-researcher**: Technique research -- MITRE ATT&CK, Atomic Red Team, GitHub, security blogs, Microsoft docs. Read-only. Tags every operation `[EIO]`, `[TANGENTIAL]`, `[OPTIONAL]`, or `[?]`. Never fills gaps with assumptions.
 - **ddm-builder**: Constructs DDM operations in Arrows.app JSON. Applies the inclusion test to every operation with explicit verdicts. Knows the red arrow convention. Runs its own validation checklist before returning.
 - **trr-writer**: Writes discipline-neutral TRR prose. 2-4 sentence overviews. No detection language. No re-walked pipelines. No numbered step lists. Condenses Phase 1 artifacts into publication-ready prose. Runs its own self-review checklist before returning.
 - **coder**: Writes Python, scripts, automation (Source Scraper, DDM tooling). Full file and bash access.
-- **reviewer**: Quality-checks TRR documents and DDM JSON. Returns structured JSON verdicts. A FAIL verdict blocks progression -- resolve all critical issues before proceeding.
+- **reviewer**: Quality-checks TRR documents and DDM JSON. Returns structured JSON verdicts. A FAIL verdict blocks progression -- resolve all critical issues before proceeding. Has Bash access for on-disk verification (JSON validity, file existence).
 
 ### Subagent Output Trust Policy
 
@@ -170,7 +211,8 @@ Do not blindly trust subagent output. Before accepting any subagent return:
 3. **Validate before advancing.** Every phase ends with a stop check. Never skip it.
 4. **Write last.** The TRR document is assembled after the DDM is validated.
 5. **Commit after every phase.** Never batch phases in a single commit. Never commit with `[?]` markers.
-6. **Front-load researcher context.** When spawning the researcher, include
+6. **Wrap after every phase.** Run `/wrap` before ending a session. The auto-wrap hook is a safety net, not a replacement.
+7. **Front-load researcher context.** When spawning the researcher, include
    any known context that saves it from redundant discovery:
    - The ATT&CK technique page URL and sub-technique ID
    - Adjacent TRRs already completed (e.g., "TRR0000 covers T1505.003.
@@ -196,10 +238,15 @@ WIP TRRs\
         trr####_win_b.json            <- Procedure B (red arrows on active path)
         trr####_win_a.png
         trr####_win_b.png
+      images\                         <- supplementary screenshots and diagrams for the TRR
       Supporting Docs\                <- research scratch notes (not committed to TRR)
       Procedure Lab\                  <- lab recreation notes
       README.md                       <- the TRR document
 ```
+
+Session notes live at `docs/session-notes/` (project root, shared with auto-wrap hook).
+Workflow insights live at `docs/insights/` (project root).
+General plans live at `docs/plans/` (project root).
 
 When complete, the TRR folder moves to `Completed TRR Reports\`.
 
@@ -210,9 +257,13 @@ When complete, the TRR folder moves to `Completed TRR Reports\`.
 - `/trr $TECHNIQUE` -- Full TRR pipeline from scoping through final document
 - `/scope $TECHNIQUE` -- Phase 1 only: scoping document + essential constraints table
 - `/ddm $TRR_ID` -- Phases 2-3: DDM construction and procedure identification
+- `/resolve $TRR_ID` -- Scan TRR folder for unresolved `[?]` markers and resolve via parallel research
 - `/plan $GOAL` -- Break any goal into a researched, actionable plan
-- `/status` -- Show current TRR work state and git status
+- `/status` -- Show current TRR work state, DDM inventory, and session health
 - `/review [files]` -- Spawn reviewer against specified files or current TRR
+- `/wrap [summary]` -- End-of-session handoff with structured session note
+- `/commit [context]` -- Generate and commit with TRR commit convention
+- `/insights [range]` -- Analyze session notes and audit logs for workflow patterns
 
 ---
 
@@ -226,12 +277,15 @@ TRR####: Phase 2 -- DDM draft with telemetry map
 TRR####: Phase 3 -- Procedures identified (WIN.A, WIN.B), DDM validated
 TRR####: Phase 4 -- TRR document complete
 TRR####: Derivative -- Detection methods document
+TRR####: Fix -- Post-review corrections
+tools: [description]
+docs: session notes / insights / methodology
 ```
 
 ---
 
 ## Downstream Tools
 
-- **Cline (VS Code)**: For repetitive file operations, git commits, and mechanical tasks. Uses local Qwen 30B via LM Studio at `http://192.168.1.21:1234`. Flag tasks as "Cline-suitable" when they don't need deep reasoning.
+- **Cline (VS Code)**: For repetitive file operations, git commits, and mechanical tasks. Can use a local LLM for cost-free execution. Flag tasks as "Cline-suitable" when they don't need deep reasoning.
 - **Arrows.app**: For DDM visualization. You generate JSON, the user pastes it into Arrows.app.
 - **TRR Source Scraper**: Python tool in `tools/trr-source-scraper/` for automated source gathering. Use the coder subagent for modifications.

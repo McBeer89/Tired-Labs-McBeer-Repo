@@ -13,6 +13,21 @@ Research only. No DDM work yet.
 
 ---
 
+### Step 0: Setup
+
+Create the directory structure for this TRR if it doesn't already exist:
+
+```bash
+mkdir -p "WIP TRRs/TRR####/win/ddms"
+mkdir -p "WIP TRRs/TRR####/win/Supporting Docs"
+mkdir -p "WIP TRRs/TRR####/win/Procedure Lab"
+mkdir -p "WIP TRRs/TRR####/win/images"
+```
+
+Replace `####` with the assigned TRR number and `win` with the target platform.
+
+---
+
 ### Step 1: Parallel Research
 
 Spawn **3 trr-researcher subagents in parallel**:

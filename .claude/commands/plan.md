@@ -47,4 +47,9 @@ Based on the research, create a concrete plan:
 
 ### Step 4: Save the Plan
 
-Save the plan to `WIP TRRs\TRR####\win\Supporting Docs\plan.md` if TRR-related, or to `tools\` if tooling-related. Then present it to the user for approval before execution.
+Save location depends on what the plan is for:
+- **TRR-specific plans**: `WIP TRRs\TRR####\win\Supporting Docs\plan.md`
+- **Tooling plans**: `tools\plans\[goal-slug].md`
+- **Everything else** (methodology, repo, workflow): `docs/plans/[goal-slug].md`
+
+Create the target directory if it doesn't exist. Present the plan to the user for approval before execution.

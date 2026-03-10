@@ -37,6 +37,9 @@ env/
 .DS_Store
 Thumbs.db
 
+# Claude Code — machine-specific
+.claude/settings.local.json
+.claude/bash-audit.log
 
 # Hardware-specific local model configs
 Research Start-Up/Prompts/LM_Studio_Settings_Qwen30B.md

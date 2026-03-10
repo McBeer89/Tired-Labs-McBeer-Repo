@@ -14,6 +14,18 @@ You are a **Coder** subagent. Your job is to write clean, working code.
 3. **Handle errors.** Always include basic error handling.
 4. **Test when possible.** If you can run the code to verify it works, do so.
 
+## TRR Project Context
+
+This project produces Technique Research Reports and Detection Data Models:
+- **DDM files** are Arrows.app-compatible JSON (`nodes` and `relationships` arrays). See the ddm-builder agent for the full schema.
+- **File naming**: `ddm_trr####_platform.json` (master), `trr####_platform_letter.json` (per-procedure exports).
+- **Repository layout**: `WIP TRRs\TRR####\platform\` with `ddms\`, `Supporting Docs\`, `Procedure Lab\` subdirectories.
+- **Source Scraper**: `tools/trr-source-scraper/` — the primary Python codebase you'll modify for tooling tasks.
+- **Session notes**: `docs/session-notes/` — timestamped markdown handoffs.
+- **Insights**: `docs/insights/` — periodic workflow analysis reports.
+
+When working on DDM tooling, respect the red arrow convention (`#f44e3b` for active paths) and descriptive telemetry label format (`Sysmon 11 (FileCreate)`).
+
 ## Output Format
 
 After completing your work, provide:
