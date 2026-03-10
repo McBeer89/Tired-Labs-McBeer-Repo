@@ -24,12 +24,28 @@ The orchestrator reads the latest session note from `docs/session-notes/` and pr
 
 ## Setup
 
+### Supported Platforms
+
+This workflow runs on **Windows** and **Linux**. All hooks use `#!/usr/bin/env bash` with standard POSIX-compatible tools (`grep`, `jq`, `awk`). No platform-specific code in any hook or agent.
+
+| Component | Windows | Linux |
+|-----------|---------|-------|
+| Hook execution | Git Bash (bundled with Git for Windows) | System bash |
+| Desktop notifications | Terminal bell (`\a`) | `notify-send` if available, else terminal bell |
+| Path separators | Git Bash normalizes to `/`; `settings.local.json` accumulates Windows-style allows | Native `/` everywhere |
+| Line endings | Hooks must use LF (`\n`), not CRLF — see [troubleshooting](#platform-specific-notes) | No concern |
+
 ### Prerequisites
 
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
-- Git
-- `jq` (required by hooks — `brew install jq`, `apt install jq`, or `choco install jq`)
-- [Arrows.app](https://arrows.app) account (free, web-based — for DDM visualization)
+| Requirement | Windows | Linux |
+|-------------|---------|-------|
+| [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) | Install and authenticate | Install and authenticate |
+| Git | [Git for Windows](https://gitforwindows.org/) (includes Git Bash) | `sudo apt install git` or `sudo dnf install git` |
+| `jq` | `choco install jq` or `scoop install jq` | `sudo apt install jq` or `sudo dnf install jq` |
+| Python 3.10+ | [python.org](https://www.python.org/downloads/) or `winget install Python.Python.3.13` | `sudo apt install python3` (usually pre-installed) |
+| [Arrows.app](https://arrows.app) | Free, web-based — for DDM visualization | Same |
+
+**Windows note:** Git for Windows must be installed and `bash` must be on your PATH. Verify: open a terminal and run `bash --version`.
 
 ### 1. Clone and Enter the Repo
 
@@ -38,55 +54,40 @@ git clone <repo-url>
 cd tired-labs
 ```
 
-### 2. Install Global Hooks
+### 2. Install Global Hooks and Settings
 
-The global hooks live in `~/.claude/hooks/` and apply to all Claude Code projects. Create them manually — the scripts are documented in the [Hooks](#hooks) section below.
+The global hooks live in `~/.claude/hooks/` and apply to **all** Claude Code projects on your machine. These files are **not in the git repo** — you must create them manually on each machine.
 
-If you already have a `~/.claude/settings.json`, merge the `hooks` and `permissions` entries from the Settings Architecture section. If not, create one with at minimum:
+The `~` path resolves to:
 
-```json
-{
-  "alwaysThinkingEnabled": true,
-  "cleanupPeriodDays": 365,
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "~/.claude/hooks/block-destructive.sh" }]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "~/.claude/hooks/bash-audit-log.sh" }]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [{ "type": "command", "command": "~/.claude/hooks/notify-stop.sh" }]
-      }
-    ]
-  },
-  "permissions": {
-    "deny": [
-      "Read(~/.ssh/**)",
-      "Read(~/.gnupg/**)",
-      "Read(~/.aws/**)",
-      "Read(~/.git-credentials)",
-      "Edit(~/.bashrc)",
-      "Edit(~/.zshrc)",
-      "Edit(~/.bash_profile)"
-    ]
-  }
-}
-```
+| Platform | Path |
+|----------|------|
+| Windows | `C:\Users\<username>\.claude\hooks\` |
+| Linux | `/home/<username>/.claude/hooks/` |
 
-### 3. Make Project Hooks Executable
+Create the directory and all six hook scripts documented in the [Global Hooks Reference](#global-hooks-reference) section below. Then create or merge your `~/.claude/settings.json` — the full recommended configuration is in the [Global Settings Reference](#global-settings-reference) section.
+
+If you already have a `~/.claude/settings.json` from another project, merge the `hooks`, `permissions`, and `env` entries rather than replacing the file.
+
+### 3. Make Hooks Executable
+
+**Linux only** — set the execute bit on all hook scripts:
 
 ```bash
+# Global hooks
+chmod +x ~/.claude/hooks/block-destructive.sh
+chmod +x ~/.claude/hooks/code-quality-check.sh
+chmod +x ~/.claude/hooks/bash-audit-log.sh
+chmod +x ~/.claude/hooks/auto-wrap.sh
+chmod +x ~/.claude/hooks/notify-stop.sh
+chmod +x ~/.claude/hooks/session-start.sh
+
+# Project hooks
 chmod +x .claude/hooks/trr-prose-guard.sh
 chmod +x .claude/hooks/block-completed-trrs.sh
 ```
+
+**Windows** — Git for Windows handles executable bits automatically. No `chmod` needed. If hooks aren't firing, verify that `bash` is on your PATH and check line endings (see [Platform-Specific Notes](#platform-specific-notes)).
 
 ### 4. Create Project-Level Settings
 
@@ -135,7 +136,7 @@ The project-level `.claude/settings.local.json` is gitignored because it accumul
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Review the assistant's final response for signs of rationalizing incomplete work. This is a TRR research workflow where thoroughness is non-negotiable. Reject the response if the assistant exhibits ANY of these patterns:\n\n1. Claiming issues are 'pre-existing' or 'out of scope' to avoid fixing them (unless the item is already documented in the Exclusion Table)\n2. Saying there are 'too many issues' to address all of them\n3. Deferring work to a 'follow-up' that was not requested by the user\n4. Listing problems without fixing them and declaring the phase done\n5. Skipping a STOP checkpoint without presenting findings to the user and waiting for confirmation\n6. Declaring a TRR phase complete when unresolved open question markers remain in TRR files\n7. Saying 'I'll leave this for the next session' for work that belongs in the current phase\n8. Accepting a reviewer FAIL verdict without fixing all critical issues\n9. Presenting a DDM operation without an explicit essential/immutable/observable verdict\n10. Moving to the next phase before the current phase's stop gate has been cleared by the user\n\nIf the response shows any of these patterns, respond with {\"ok\": false, \"reason\": \"You are rationalizing incomplete work. [identify the specific pattern and what needs to be finished]. Go back and complete the work.\"}.\n\nIf the work is genuinely complete, the user explicitly asked to stop, or the assistant is appropriately recommending a session wrap due to context limits, respond with {\"ok\": true}."
+            "prompt": "Review the assistant's final response for signs of rationalizing incomplete work. This is a TRR research workflow where thoroughness is non-negotiable. Reject the response if the assistant exhibits ANY of these patterns:\n\n1. Claiming issues are 'pre-existing' or 'out of scope' to avoid fixing them (unless the item is already documented in the Exclusion Table, OR the issues are in files under 'Completed TRR Reports/' which are protected and read-only per policy — the assistant should report findings to the user and move on without fixing them or creating log files)\n2. Saying there are 'too many issues' to address all of them\n3. Deferring work to a 'follow-up' that was not requested by the user\n4. Listing problems without fixing them and declaring the phase done\n5. Skipping a STOP checkpoint without presenting findings to the user and waiting for confirmation\n6. Declaring a TRR phase complete when unresolved open question markers remain in TRR files\n7. Saying 'I'll leave this for the next session' for work that belongs in the current phase\n8. Accepting a reviewer FAIL verdict without fixing all critical issues\n9. Presenting a DDM operation without an explicit essential/immutable/observable verdict\n10. Moving to the next phase before the current phase's stop gate has been cleared by the user\n\nIf the response shows any of these patterns, respond with {\"ok\": false, \"reason\": \"You are rationalizing incomplete work. [identify the specific pattern and what needs to be finished]. Go back and complete the work.\"}.\n\nIf the work is genuinely complete, the user explicitly asked to stop, or the assistant is appropriately recommending a session wrap due to context limits, respond with {\"ok\": true}."
           }
         ]
       }
@@ -144,11 +145,38 @@ The project-level `.claude/settings.local.json` is gitignored because it accumul
 }
 ```
 
-If the relative path for `trr-prose-guard.sh` doesn't fire during your first session (test by writing detection language to a TRR file), replace it with the absolute path to `<repo-root>/.claude/hooks/trr-prose-guard.sh`.
+**Relative hook paths** (`.claude/hooks/...`) resolve from the repo root on both platforms. If a hook doesn't fire during your first session, replace the relative path with the absolute path to the script.
 
-### 5. Verify
+### 5. Install Python Dependencies (for Source Scraper)
+
+```bash
+cd tools/trr-source-scraper
+pip install -r requirements.txt
+# Windows: if 'pip' isn't recognized, use 'python -m pip install -r requirements.txt'
+# Linux: use 'pip3' if 'pip' points to Python 2
+```
+
+### 6. Verify
 
 Open Claude Code in the repo and run `/status`. You should see the repo state and any existing TRR work. The hooks will begin accumulating permission allows in `settings.local.json` as you approve them during use.
+
+**Quick hook test** (optional): In a Claude Code session, ask it to write the phrase "primary detection opportunity" into a TRR file. The `trr-prose-guard.sh` hook should block it with specific feedback. If it goes through, check that the hook path in `settings.local.json` is correct and the script is executable (Linux).
+
+### Platform-Specific Notes
+
+**Windows:**
+- Claude Code runs in your terminal (CMD, PowerShell, or Windows Terminal). Hooks execute through Git Bash transparently.
+- The `notify-stop.sh` hook uses terminal bell (`\a`) on Windows since there's no native notification API from Git Bash.
+- The source scraper handles Windows UTF-8 encoding automatically (`sys.stdout.reconfigure`).
+- `settings.local.json` accumulates Windows-style permission allows (e.g., `Read(//c/Users/...)`). This is normal.
+- The global `settings.json` includes `MSYS_NO_PATHCONV` and `MSYS2_ARG_CONV_EXCL` env vars to prevent Git Bash from mangling paths passed to `jq` and other tools. If you're on Windows, make sure these are in your global settings.
+- If hooks silently fail, check for CRLF line endings: `dos2unix .claude/hooks/*.sh` (or `sed -i 's/\r$//' .claude/hooks/*.sh` if `dos2unix` isn't available).
+
+**Linux:**
+- Claude Code runs in your terminal. Hooks execute through the system's `bash`.
+- The `notify-stop.sh` hook uses `notify-send` for desktop notifications if available (common on GNOME/KDE). Falls back to terminal bell.
+- File paths in `settings.local.json` use forward slashes natively.
+- The `MSYS_NO_PATHCONV` and `MSYS2_ARG_CONV_EXCL` env vars in global settings are Windows-only and harmless on Linux — they're ignored.
 
 ---
 
@@ -204,7 +232,8 @@ repo-root/
 ├── WIP TRRs/                              ← Active TRR work
 ├── Completed TRR Reports/                 ← Finished TRRs
 └── tools/
-    └── trr-source-scraper/                ← Pre-session automated source gathering
+    ├── trr-source-scraper/                ← Pre-session automated source gathering
+    └── kql-validator/                     ← KQL syntax validation for generated queries
 ```
 
 ### Research Start-Up Directory
@@ -228,11 +257,11 @@ If cloning fresh, these files won't exist. `settings.local.json` rebuilds as Cla
 
 Settings are split across two layers that merge at runtime:
 
-**Global** (`~/.claude/settings.json`): Privacy env vars, credential deny rules, shell config protection, `alwaysThinkingEnabled`, `cleanupPeriodDays: 365`, and hooks that apply to all projects — `block-destructive.sh`, `code-quality-check.sh`, `bash-audit-log.sh`, `auto-wrap.sh`, `notify-stop.sh`, and a generic anti-rationalization Stop prompt.
+**Global** (`~/.claude/settings.json`): Privacy env vars, credential deny rules, shell config protection, `alwaysThinkingEnabled`, `cleanupPeriodDays: 365`, and hooks that apply to all projects — `block-destructive.sh`, `code-quality-check.sh`, `bash-audit-log.sh`, `auto-wrap.sh`, `notify-stop.sh`, `session-start.sh`, and a generic anti-rationalization Stop prompt. **This file is not in the git repo** — see [Global Settings Reference](#global-settings-reference) for the full configuration.
 
 **Project** (`.claude/settings.local.json`): TRR-specific hooks that layer on top of global — `trr-prose-guard.sh` on Write/Edit operations, `block-completed-trrs.sh` on Write/Edit/Bash operations (protects completed TRR core files, allows kql/ writes), permission deny rules for completed TRR paths, and a TRR-specific anti-rationalization Stop prompt with 10 domain-specific rejection patterns. Also contains accumulated permission allows for research domains.
 
-The project file is gitignored (machine-specific). The global file lives outside the repo.
+The project file is gitignored (machine-specific). The global file lives outside the repo. **Both must be set up for the pipeline to function correctly** — global hooks provide the safety foundation, project hooks provide methodology enforcement.
 
 ---
 
@@ -240,21 +269,24 @@ The project file is gitignored (machine-specific). The global file lives outside
 
 ### Global Hooks (`~/.claude/hooks/`)
 
+These are **not in the git repo**. You must create them on each machine. See [Global Hooks Reference](#global-hooks-reference) for the full source code.
+
 | Hook | Event | What It Does |
 |------|-------|-------------|
-| `block-destructive.sh` | PreToolUse (Bash) | Blocks `rm -rf`, direct push to main/master, and `git commit` when staged files contain `[?]` markers |
-| `code-quality-check.sh` | PreToolUse (Write/Edit) | Blocks hardcoded credentials, debug leftovers, and protects sacred files (CLAUDE.md, settings, hooks) |
+| `block-destructive.sh` | PreToolUse (Bash) | Blocks `rm -rf`, direct push to main/master, force push, and `git commit` when staged files contain `[?]` markers |
+| `code-quality-check.sh` | PreToolUse (Write/Edit) | Blocks hardcoded credentials, debug leftovers, and protects sacred files (CLAUDE.md, settings, hooks) from agent modification |
 | `bash-audit-log.sh` | PostToolUse (Bash) | Appends every bash command to `~/.claude/bash-audit.log` with timestamp |
 | `auto-wrap.sh` | PreCompact | Safety net — writes a lightweight session note before context compaction. Manual `/wrap` is always preferred. |
-| `notify-stop.sh` | Stop | Desktop/terminal notification when Claude needs attention |
-| `session-start.sh` | SessionStart | Session initialization |
-| Stop prompt (generic) | Stop | Fast-model check for rationalization patterns (generic, all projects) |
+| `notify-stop.sh` | Stop | Desktop/terminal notification when Claude needs attention (cross-platform: `notify-send` on Linux, `osascript` on macOS, terminal bell everywhere) |
+| `session-start.sh` | SessionStart | Injects git context (branch, recent commits, uncommitted changes, latest session note pickup items) into every session |
 
 ### Project Hooks (`.claude/hooks/`)
 
+These **are in the git repo** and available immediately after cloning.
+
 | Hook | Event | What It Does |
 |------|-------|-------------|
-| `trr-prose-guard.sh` | PreToolUse (Write/Edit) | Scans TRR markdown for detection language, tool-focused analysis, numbered step lists, bare telemetry labels. Blocks with specific feedback. |
+| `trr-prose-guard.sh` | PreToolUse (Write/Edit) | Scans TRR markdown for detection language (18 patterns), tool-focused analysis (8 patterns), numbered step lists, bare telemetry labels. Blocks with specific feedback. |
 | `block-completed-trrs.sh` | PreToolUse (Write/Edit/Bash) | Blocks edits to core files (README.md, ddms/, images/) in `Completed TRR Reports/`. Allows writes to `kql/` subdirectories for derivative output. |
 | Stop prompt (TRR-specific) | Stop | 10-pattern TRR rationalization check: inclusion test hedging, phase gate skipping, `[?]` rationalization, reviewer FAIL acceptance, incomplete DDM verdicts |
 
@@ -423,6 +455,21 @@ The file `kql-environment-profile.md` at the repo root tells the kql-builder wha
 
 The minimum to generate useful queries is §1 (platform) and §2 (available sources). §3 is only needed if your fields are non-standard. §4 grows over time from tuning — it's not something you fill out day one. §5 is free-form for anything else the kql-builder should know.
 
+### KQL Query Validation
+
+The `tools/kql-validator/` tool validates `.kql` files generated by the `kql-builder` agent. It runs as a step in the `/kql` command pipeline between generation and reviewer pass.
+
+**Current:** Level 1 — structural syntax validation. Catches malformed queries, SQL-instead-of-KQL errors, unclosed delimiters, invalid operators, and unknown table names. No external dependencies (Python stdlib only). Runs locally in milliseconds.
+
+**Future upgrade path:**
+
+| Level | What It Adds | When to Implement |
+|-------|-------------|-------------------|
+| Level 2 — Schema | Validates field/table names against `kql-environment-profile.md` | When the environment profile is populated |
+| Level 3 — Live | Compiles queries against a Log Analytics workspace API | When Azure infrastructure and credentials are available |
+
+Each level is additive — Level 1 always runs, Level 2 adds schema checks if the profile exists, Level 3 adds live compilation if credentials are configured. See `tools/kql-validator/README.md` for details.
+
 ---
 
 ### Per-Procedure DDM Export Convention
@@ -450,3 +497,406 @@ docs: session notes / insights / methodology
 ```
 
 Commits happen at each phase gate, never batched. The `block-destructive.sh` hook prevents commits with `[?]` markers in staged files.
+
+---
+
+## Global Hooks Reference
+
+These scripts live at `~/.claude/hooks/` on each machine. They are **not in the git repo** — create them manually after cloning.
+
+### `block-destructive.sh`
+
+PreToolUse hook for Bash commands. Blocks `rm -rf`, direct push to main/master, force push, and `git commit` when staged files contain `[?]` markers.
+
+```bash
+#!/usr/bin/env bash
+# PreToolUse hook: Block destructive bash commands
+# Exit 0 = allow, Exit 2 = block (message fed back to Claude)
+
+INPUT=$(cat)
+CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+
+# Block rm -rf (suggest targeted rm or trash instead)
+if echo "$CMD" | grep -qiE '(^|;[[:space:]]*|&&[[:space:]]*|[|][|][[:space:]]*|[|][[:space:]]*)rm[[:space:]]' && \
+   echo "$CMD" | grep -qiE '(^|[[:space:]])-[a-zA-Z]*[rR]|--recursive' && \
+   echo "$CMD" | grep -qiE '(^|[[:space:]])-[a-zA-Z]*[fF]|--force'; then
+  echo "BLOCKED: Do not use rm -rf. Use targeted 'rm' on specific files, or move files to a temp directory first." >&2
+  exit 2
+fi
+
+# Block direct push to main/master
+if echo "$CMD" | grep -qE 'git[[:space:]]+push.*(main|master)(\s|$)'; then
+  echo "BLOCKED: Do not push directly to main/master. Create a feature branch, push there, then merge." >&2
+  exit 2
+fi
+
+# Block force push
+if echo "$CMD" | grep -qE 'git[[:space:]]+push[[:space:]].*--force'; then
+  echo "BLOCKED: Do not force push. If you need to update a branch, use --force-with-lease instead." >&2
+  exit 2
+fi
+
+# Block committing with unresolved [?] markers
+if echo "$CMD" | grep -qE 'git[[:space:]]+commit'; then
+  MARKERS=$(git diff --cached --unified=0 2>/dev/null | grep -c '\[?\]' || true)
+  if [ "$MARKERS" -gt 0 ]; then
+    echo "BLOCKED: Staged files contain $MARKERS unresolved [?] markers. Resolve all open questions before committing. This is a core methodology rule — never commit with open questions." >&2
+    exit 2
+  fi
+fi
+
+exit 0
+```
+
+### `code-quality-check.sh`
+
+PreToolUse hook for Write/Edit operations. Blocks hardcoded credentials, debug leftovers, and protects sacred files (CLAUDE.md, settings, hooks) from agent modification.
+
+```bash
+#!/usr/bin/env bash
+# PreToolUse hook: Check Write/Edit operations for sacred files and code quality
+# Exit 0 = allow, Exit 2 = block with feedback
+
+if ! command -v jq &>/dev/null; then exit 0; fi
+
+INPUT=$(cat)
+FILEPATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty')
+CONTENT=$(echo "$INPUT" | jq -r '.tool_input.content // .tool_input.new_str // empty')
+
+# --- Sacred file protection ---
+if echo "$FILEPATH" | grep -qE 'CLAUDE\.md$'; then
+  echo "BLOCKED: '$FILEPATH' is a protected file. Agents must not modify CLAUDE.md. Ask the PM to make this change manually." >&2
+  exit 2
+fi
+
+if echo "$FILEPATH" | grep -qE '\.claude/settings[^/]*\.json$'; then
+  echo "BLOCKED: '$FILEPATH' is a protected settings file. Agents must not modify Claude Code settings. Ask the PM to make this change manually." >&2
+  exit 2
+fi
+
+if echo "$FILEPATH" | grep -qE '\.claude/hooks/[^/]+\.sh$'; then
+  echo "BLOCKED: '$FILEPATH' is a protected hook script. Agents must not modify enforcement hooks. Ask the PM to make this change manually." >&2
+  exit 2
+fi
+
+# Skip non-code files (remaining checks are code-specific)
+if ! echo "$FILEPATH" | grep -qiE '\.(py|js|ts|jsx|tsx|cs|ps1|sh|bash|lua|java)$'; then
+  exit 0
+fi
+
+VIOLATIONS=""
+
+# --- Hardcoded credentials ---
+CRED_PATTERNS=(
+  "password\s*=\s*['\"][^'\"]+['\"]"
+  "api_key\s*=\s*['\"][^'\"]+['\"]"
+  "secret\s*=\s*['\"][^'\"]+['\"]"
+  "token\s*=\s*['\"][A-Za-z0-9+/=]{20,}['\"]"
+  "AWS_ACCESS_KEY_ID\s*=\s*['\"]"
+  "PRIVATE_KEY\s*=\s*['\"]"
+)
+
+for PATTERN in "${CRED_PATTERNS[@]}"; do
+  if echo "$CONTENT" | grep -qiE "$PATTERN"; then
+    VIOLATIONS="${VIOLATIONS}\n- Possible hardcoded credential detected matching pattern: '$PATTERN'. Use environment variables or a config file instead."
+  fi
+done
+
+# --- Debug leftovers in production code ---
+if echo "$FILEPATH" | grep -qvE '(test_|_test\.|spec\.|\.test\.)'; then
+  if echo "$CONTENT" | grep -qE '^\s*(console\.log|print\(.*debug|debugger;|import pdb|breakpoint\(\))'; then
+    VIOLATIONS="${VIOLATIONS}\n- Debug statement detected in non-test file. Remove console.log/print debug/debugger/pdb/breakpoint before committing."
+  fi
+fi
+
+if [ -n "$VIOLATIONS" ]; then
+  echo -e "BLOCKED: Code quality issues in $FILEPATH:\n$VIOLATIONS\n\nFix these before writing." >&2
+  exit 2
+fi
+
+exit 0
+```
+
+### `bash-audit-log.sh`
+
+PostToolUse hook for Bash commands. Appends every command to `~/.claude/bash-audit.log` with UTC timestamp.
+
+```bash
+#!/usr/bin/env bash
+if ! command -v jq &>/dev/null; then exit 0; fi
+
+INPUT=$(cat)
+CMD=$(echo "$INPUT" | jq -r ".tool_input.command // empty" 2>/dev/null)
+
+if [ -n "$CMD" ]; then
+  TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  echo "[$TS] $CMD" >> ~/.claude/bash-audit.log 2>/dev/null || true
+fi
+
+exit 0
+```
+
+### `auto-wrap.sh`
+
+PreCompact hook. Writes a lightweight session note to `docs/session-notes/` before context compaction. This is the emergency safety net — manual `/wrap` is always preferred.
+
+```bash
+#!/usr/bin/env bash
+# PreCompact: Auto-wrap session before compaction loses context
+
+if ! command -v jq &>/dev/null; then exit 0; fi
+if ! command -v git &>/dev/null; then exit 0; fi
+
+INPUT=$(cat)
+TRIGGER=$(echo "$INPUT" | jq -r '.trigger // "unknown"' 2>/dev/null)
+
+if ! git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then exit 0; fi
+
+NOTES_DIR="docs/session-notes"
+if [ ! -d "$NOTES_DIR" ]; then
+  mkdir -p "$NOTES_DIR" 2>/dev/null || exit 0
+fi
+
+TODAY=$(date +"%Y-%m-%d")
+FILENAME="${NOTES_DIR}/${TODAY}.md"
+COUNTER=1
+while [ -f "$FILENAME" ]; do
+  COUNTER=$((COUNTER + 1))
+  FILENAME="${NOTES_DIR}/${TODAY}-${COUNTER}.md"
+done
+
+BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+LAST_COMMIT=$(git log --oneline -1 2>/dev/null || echo "none")
+UNCOMMITTED=$(git status --short 2>/dev/null)
+RECENT_COMMITS=$(git log --oneline -5 2>/dev/null || echo "none")
+OPEN_QUESTIONS=$(grep -rn "\[?\]" . --include="*.py" --include="*.ps1" --include="*.md" --include="*.cs" --include="*.json" --include="*.lua" --include="*.java" 2>/dev/null | head -10)
+RECENT_FILES=$(find . -not -path "./.git/*" -not -path "./node_modules/*" -not -path "./.venv/*" \
+  \( -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.cs" -o -name "*.ps1" -o -name "*.sh" -o -name "*.md" -o -name "*.json" -o -name "*.lua" -o -name "*.java" \) \
+  -mmin -120 2>/dev/null | head -20)
+
+cat > "$FILENAME" << EOF
+# Session Notes — ${TODAY} (auto-wrap)
+
+> **Auto-generated** by PreCompact hook (trigger: ${TRIGGER}).
+> Context was approaching capacity. Review and fill in details the hook could not capture.
+
+## What Was Accomplished
+[TODO: Fill in — the hook captured git state below but cannot summarize intent.]
+
+## Current State
+- **Branch**: ${BRANCH}
+- **Last Commit**: ${LAST_COMMIT}
+- **Uncommitted Changes**: ${UNCOMMITTED:-none}
+
+## Recent Commits
+\`\`\`
+${RECENT_COMMITS}
+\`\`\`
+
+## Recently Modified Files
+${RECENT_FILES:-No recent file changes detected.}
+
+## What's Next
+[TODO: Fill in — what should the next session start with?]
+
+## Open Questions
+${OPEN_QUESTIONS:-No \[\?\] markers found.}
+
+## Decisions Made
+[TODO: Fill in — what was decided in this session?]
+
+## Blockers
+[TODO: Fill in — anything blocking progress?]
+EOF
+
+git add "$FILENAME" 2>/dev/null
+git commit -m "docs: auto-wrap session notes for ${TODAY} (pre-compaction)" --no-verify 2>/dev/null || true
+
+exit 0
+```
+
+### `notify-stop.sh`
+
+Stop hook. Cross-platform notification when Claude needs attention.
+
+```bash
+#!/usr/bin/env bash
+if command -v osascript &>/dev/null; then
+    osascript -e 'display notification "Task completed or needs your input" with title "Claude Code"' 2>/dev/null
+elif command -v notify-send &>/dev/null; then
+    notify-send "Claude Code" "Task completed or needs your input" 2>/dev/null
+else
+    printf '\a'
+fi
+
+exit 0
+```
+
+### `session-start.sh`
+
+SessionStart hook. Injects git context into every session so the orchestrator starts oriented.
+
+```bash
+#!/usr/bin/env bash
+if ! git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
+  echo "Not in a git repository."
+  exit 0
+fi
+
+BRANCH=$(git branch --show-current 2>/dev/null || echo "detached")
+LAST_COMMITS=$(git log --oneline -5 2>/dev/null || echo "  no commits")
+DIRTY=$(git status --short 2>/dev/null)
+
+echo "=== Session Context ==="
+echo "Branch: ${BRANCH}"
+echo ""
+echo "Recent commits:"
+echo "${LAST_COMMITS}"
+echo ""
+
+if [ -n "$DIRTY" ]; then
+  echo "Uncommitted changes:"
+  echo "${DIRTY}"
+else
+  echo "Working tree: clean"
+fi
+
+NOTES_DIR="docs/session-notes"
+if [ -d "$NOTES_DIR" ]; then
+  LATEST_NOTE=$(ls -t "$NOTES_DIR"/*.md 2>/dev/null | head -1)
+  if [ -n "$LATEST_NOTE" ]; then
+    NOTE_NAME=$(basename "$LATEST_NOTE")
+    NEXT_SECTION=$(sed -n '/^## What'\''s Next/,/^## /{/^## What'\''s Next/d;/^## /d;p}' "$LATEST_NOTE" 2>/dev/null | head -8)
+    echo ""
+    echo "Latest session note: ${NOTES_DIR}/${NOTE_NAME}"
+    if [ -n "$NEXT_SECTION" ] && ! echo "$NEXT_SECTION" | grep -q '^\[TODO'; then
+      echo "Pickup items:"
+      echo "${NEXT_SECTION}"
+    fi
+  fi
+fi
+
+echo "======================="
+exit 0
+```
+
+---
+
+## Global Settings Reference
+
+The global `~/.claude/settings.json` is **not in the git repo**. Create it on each machine. Below is the full recommended configuration:
+
+```json
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "cleanupPeriodDays": 365,
+  "env": {
+    "DISABLE_TELEMETRY": "1",
+    "DISABLE_ERROR_REPORTING": "1",
+    "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
+    "MSYS_NO_PATHCONV": "1",
+    "MSYS2_ARG_CONV_EXCL": "*"
+  },
+  "permissions": {
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.azure/**)",
+      "Read(~/.kube/**)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.npmrc)",
+      "Read(~/.pypirc)",
+      "Read(~/.git-credentials)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.netrc)",
+      "Read(~/AppData/Roaming/npm/npmrc)",
+      "Read(~/AppData/Roaming/.docker/config.json)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.bash_profile)",
+      "Edit(~/.profile)",
+      "Edit(~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1)",
+      "Edit(~/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1)"
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/block-destructive.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/code-quality-check.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/bash-audit-log.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/auto-wrap.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/notify-stop.sh"
+          },
+          {
+            "type": "prompt",
+            "prompt": "Review the assistant's final response. Reject it if the assistant is rationalizing incomplete work. Common patterns: claiming issues are 'pre-existing' or 'out of scope' to avoid fixing them, saying there are 'too many issues' to address all of them, deferring work to a 'follow-up' that was not requested, listing problems without fixing them and calling that done, skipping test or lint failures with excuses, or declaring success while leaving TODO/FIXME markers unresolved. If the response shows any of these patterns, respond {\"ok\": false, \"reason\": \"You are rationalizing incomplete work. [specific issue]. Go back and finish.\"}. If the work is genuinely complete or the assistant is legitimately asking the PM for a decision, respond {\"ok\": true}."
+          }
+        ]
+      }
+    ]
+  },
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "high"
+}
+```
+
+**Notes:**
+- The `MSYS_NO_PATHCONV` and `MSYS2_ARG_CONV_EXCL` env vars prevent Git Bash on Windows from mangling paths passed to `jq` and other tools. Harmless on Linux — they're ignored.
+- The `~/AppData/...` deny rules are Windows-specific. Harmless on Linux — paths don't exist and rules are never triggered.
+- The `~/Documents/PowerShell/...` deny rules protect PowerShell profiles on Windows. Harmless on Linux.
+- `effortLevel: "high"` sets the default thinking effort. Adjust to your preference.
+- The generic Stop prompt is a lighter version of the TRR-specific one in `settings.local.json`. Both fire — global first, then project-level.

@@ -108,6 +108,14 @@
       "Read(//c/Users/JohnM/Downloads/**)",
       "Read(//c/Users/JohnM/.claude/**)"
     ],
+    "deny": [
+      "Edit(Completed TRR Reports/**/README.md)",
+      "Edit(Completed TRR Reports/**/ddms/**)",
+      "Edit(Completed TRR Reports/**/images/**)",
+      "Write(Completed TRR Reports/**/README.md)",
+      "Write(Completed TRR Reports/**/ddms/**)",
+      "Write(Completed TRR Reports/**/images/**)"
+    ],
     "additionalDirectories": [
       "C:\\Users\\JohnM\\.claude"
     ]
@@ -116,11 +124,24 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
             "command": ".claude/hooks/trr-prose-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/block-completed-trrs.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/block-completed-trrs.sh"
           }
         ]
       }
@@ -130,7 +151,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Review the assistant's final response for signs of rationalizing incomplete work. This is a TRR research workflow where thoroughness is non-negotiable. Reject the response if the assistant exhibits ANY of these patterns:\n\n1. Claiming issues are 'pre-existing' or 'out of scope' to avoid fixing them (unless the item is already documented in the Exclusion Table)\n2. Saying there are 'too many issues' to address all of them\n3. Deferring work to a 'follow-up' that was not requested by the user\n4. Listing problems without fixing them and declaring the phase done\n5. Skipping a STOP checkpoint without presenting findings to the user and waiting for confirmation\n6. Declaring a TRR phase complete when unresolved open question markers remain in TRR files\n7. Saying 'I'll leave this for the next session' for work that belongs in the current phase\n8. Accepting a reviewer FAIL verdict without fixing all critical issues\n9. Presenting a DDM operation without an explicit essential/immutable/observable verdict\n10. Moving to the next phase before the current phase's stop gate has been cleared by the user\n\nIf the response shows any of these patterns, respond with {\"ok\": false, \"reason\": \"You are rationalizing incomplete work. [identify the specific pattern and what needs to be finished]. Go back and complete the work.\"}.\n\nIf the work is genuinely complete, the user explicitly asked to stop, or the assistant is appropriately recommending a session wrap due to context limits, respond with {\"ok\": true}."
+            "prompt": "Review the assistant's final response for signs of rationalizing incomplete work. This is a TRR research workflow where thoroughness is non-negotiable. Reject the response if the assistant exhibits ANY of these patterns:\n\n1. Claiming issues are 'pre-existing' or 'out of scope' to avoid fixing them (unless the item is already documented in the Exclusion Table, OR the issues are in files under 'Completed TRR Reports/' which are protected and read-only per policy — the assistant should report findings to the user and move on without fixing them or creating log files)\n2. Saying there are 'too many issues' to address all of them\n3. Deferring work to a 'follow-up' that was not requested by the user\n4. Listing problems without fixing them and declaring the phase done\n5. Skipping a STOP checkpoint without presenting findings to the user and waiting for confirmation\n6. Declaring a TRR phase complete when unresolved open question markers remain in TRR files\n7. Saying 'I'll leave this for the next session' for work that belongs in the current phase\n8. Accepting a reviewer FAIL verdict without fixing all critical issues\n9. Presenting a DDM operation without an explicit essential/immutable/observable verdict\n10. Moving to the next phase before the current phase's stop gate has been cleared by the user\n\nIf the response shows any of these patterns, respond with {\"ok\": false, \"reason\": \"You are rationalizing incomplete work. [identify the specific pattern and what needs to be finished]. Go back and complete the work.\"}.\n\nIf the work is genuinely complete, the user explicitly asked to stop, or the assistant is appropriately recommending a session wrap due to context limits, respond with {\"ok\": true}."
           }
         ]
       }

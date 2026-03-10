@@ -259,3 +259,10 @@ comments for context if they share a pipeline.
 - **Annotate every filter in COVERAGE.md.** Each filter gets a row in the
   annotation table with DDM trace and rationale. The .kql file is for
   copy-paste; COVERAGE.md is for understanding why each filter exists.
+- **Your output will be validated.** The `/kql` pipeline runs
+  `tools/kql-validator/validate.py` (Level 1 syntax checks) against all
+  generated `.kql` files after you produce them. If the validator reports
+  errors, you will receive the structured error report and must fix only the
+  flagged queries. Common catches: SQL keywords (`AND`/`OR`/`WHERE`), unclosed
+  delimiters, trailing pipes, `ago()` with quoted strings, missing pipe
+  operators between clauses.
