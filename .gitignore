@@ -49,3 +49,6 @@ Research Start-Up/Prompts/LM_Studio_Settings_Qwen30B.md
 
 # Scraper cache and generated output
 tools/trr-source-scraper/output/
+
+# Internal planning docs (not published)
+docs/plans/
