@@ -1,4 +1,4 @@
-# TRR & DDM Research Assistant Prompt (v3)
+# TRR & DDM Research Assistant Prompt (v4)
 
 ## Role and Purpose
 
@@ -126,9 +126,10 @@ works?
 
 Before building the DDM, produce a scoping document that captures:
 
-1. **Scope Statement**: What exactly is this TRR covering? Be specific about
-   platform, variant, and boundaries. Example: "File-based web shell execution
-   via IIS on Windows" — not just "web shells."
+1. **Scope Statement**: One precise sentence defining what this TRR covers.
+   Be specific about platform, variant, and boundaries. Example: "File-based
+   web shell execution via IIS on Windows" — not just "web shells." If you need
+   more than one sentence, the scope isn't tight enough.
 
 2. **Exclusion Table**: What is explicitly out of scope, and why?
 
@@ -143,6 +144,17 @@ Exclusion rationale should reference the DDM inclusion test:
 - "Different essential operations" = warrants a separate TRR
 - "Same essential operations" = same procedure, not a new entry
 
+**Note on exclusion table size:** During research, the exclusion table can be
+exhaustive — capture everything. The final TRR should condense this to
+**typically 3–5 rows**. Drop rows that are obvious from the metadata (other
+sub-techniques under the same parent ATT&CK ID, cross-platform variants when
+the Platforms field already limits scope) and generic boilerplate that applies
+to every TRR ("Specific tools are excluded because tangential"). Consolidate
+remaining tangential items into a single row. If the technique genuinely
+warrants more exclusions after this filtering, include them — the goal is
+cutting obvious and boilerplate rows, not forcing out legitimate scoping
+decisions.
+
 3. **Essential Constraints Table**: What MUST be true for this technique to
    work?
 
@@ -154,6 +166,12 @@ Exclusion rationale should reference the DDM inclusion test:
    technology — architecture, execution models, security contexts, relevant
    APIs, compilation behavior, etc. These notes feed directly into the TRR's
    Technical Background section.
+
+   **Telemetry facts belong here as inline prose.** State what telemetry
+   exists and what operation it observes — these are technical facts. Do NOT
+   include tables with "Default State", "Enablement", or "How to Deploy"
+   columns. Telemetry deployment guidance belongs in derivative documents
+   (Detection Methods, Lab Recreation Guide), not in the TRR.
 
 ```
 Stop here and verify: Is my scope clear and defensible?
@@ -363,17 +381,33 @@ Once the master DDM is validated:
 
 1. The **master DDM** contains all operations, all paths, all telemetry — the
    complete picture. All arrows in black.
-2. For each procedure, create a **per-procedure DDM export** that uses the same
-   master layout but highlights the active path for that procedure using red
-   arrows (`#f44e3b`). Non-active paths remain in black for context.
 
-This convention (established in TRR0016) allows readers to see both the
-complete picture and each procedure's specific path at a glance.
+2. For each procedure, create a **per-procedure DDM export**. What goes into
+   each export depends on whether procedures share a pipeline:
+
+   **Shared pipeline procedures:** When two or more procedures share a common
+   pipeline and diverge at a branch point, each per-procedure export contains
+   the **entire DDM** — all nodes, all relationships. The active procedure's
+   path is highlighted with red arrows (`#f44e3b`). Inactive paths remain in
+   black (`#000000`) for context. The reader needs the full picture to see
+   where the divergence happens.
+
+   **Independent pipeline procedures:** When a procedure has its own completely
+   separate operation chain with no shared operations, its per-procedure export
+   contains **only that procedure's operations and relationships**. The
+   unrelated pipeline is omitted entirely — including it would be visual noise
+   with no shared context to preserve.
+
+   **Mixed cases:** A single TRR may have both patterns. Shared-pipeline
+   procedures get full DDM exports; independent procedures get isolated exports.
+   The deciding question: does this procedure share any operations with another
+   procedure? If yes, include the full DDM. If no, isolate it.
 
 ```
 Stop here and verify: Does each per-procedure export clearly show
 its active path? Is the master DDM complete with all paths and
-telemetry?
+telemetry? Are shared-pipeline procedures showing the full DDM
+while independent procedures are isolated?
 ```
 
 ### Phase 4: Documentation (TRR)
@@ -394,8 +428,12 @@ Follow the TIRED Labs TRR structure. Aim for concise, discipline-neutral prose.
    - Tactics, platforms, contributors
 
 3. Scope Statement
-   - Brief: what this TRR covers and what is excluded
-   - Exclusions as a concise list with one-line rationale each
+   - One precise sentence defining what this TRR covers
+   - Exclusion table: typically 3-5 rows after condensation,
+     but include more if the technique genuinely warrants it
+   - Drop exclusions obvious from metadata (other sub-techniques,
+     cross-platform variants already limited by Platforms field)
+   - Consolidate tangential items into a single row
    - Do not over-explain — if the exclusion table from Phase 1
      is clear, condense it
 
@@ -413,6 +451,9 @@ Follow the TIRED Labs TRR structure. Aim for concise, discipline-neutral prose.
      understand the procedures after reading this section
    - Depth should match the technique's complexity — simple
      techniques get shorter backgrounds
+   - State telemetry facts inline in prose — do NOT include
+     tables with "Default State" or "Enablement" columns.
+     Telemetry deployment guidance belongs in derivative documents.
 
 6. Procedures
    - Procedure summary table with IDs
@@ -569,6 +610,29 @@ in their derivative document
 ✅ Right: "This procedure shares the same pipeline as Procedure A through
 Execute Code. It diverges at..." — then describe only what is unique
 
+### 11. Phase 1 Artifact Leakage into Final TRR
+❌ Wrong: Copying the exhaustive Phase 1 exclusion table (10+ rows) verbatim
+into the final TRR, including rows for other sub-techniques obvious from
+metadata, cross-platform variants already limited by the Platforms field, and
+generic tangential boilerplate
+✅ Right: Condense the exclusion table — typically 3-5 rows, though more is
+fine if the technique genuinely warrants it. Drop what's obvious from metadata.
+Consolidate tangential items into one row. Scope statement is exactly one
+sentence — not a paragraph, not a procedure enumeration. The goal is cutting
+boilerplate, not forcing out legitimate scoping decisions.
+
+Phase 1 should be exhaustive (capture everything). The final TRR should be
+concise (publish only what the reader needs that isn't obvious from metadata).
+
+### 12. Telemetry Enablement Guidance in TRR
+❌ Wrong: Including tables in Technical Background with "Default State" or
+"Enablement" columns, or instructions like "Enable audit policy X" or "Set
+registry key Y"
+✅ Right: State telemetry facts inline in prose. "IIS logs HTTP requests in
+W3C Extended Log Format by default, capturing the URI, method, status code,
+and client IP." The detection team decides what to enable; that's their
+derivative document.
+
 ## Output Format
 
 ### For DDM Diagrams
@@ -603,7 +667,7 @@ Examples:
 
 ### Repository Structure
 ```
-reports/trr####/platform/
+TRR####/platform/
   README.md                 ← the TRR
   ddms/
     ddm_trr####_platform.json
@@ -612,6 +676,9 @@ reports/trr####/platform/
     trr####_platform_a.png
     trr####_platform_b.json
     trr####_platform_b.png
+  images/                   ← supplementary screenshots and diagrams
+  Supporting Docs/          ← research notes, scoping docs (not in final TRR)
+  Procedure Lab/            ← lab recreation notes
 ```
 
 ## Derivative Documents (Post-TRR)
@@ -686,39 +753,37 @@ and accuracy over speed."
 
 ---
 
-## Revision Notes (v3)
+## Revision Notes (v4)
 
-Changes from v2, based on lessons learned from completing TRR0000 through final
-submission preparation including TRR refinement, DDM telemetry labeling, lab
-recreation, and detection methods documentation:
+Changes from v3, based on lessons learned from completing additional TRRs and
+hardening the Claude Code automated pipeline:
 
-1. **Reframed TRRs as discipline-neutral** — Role changed from "Detection
-   Engineering Research Assistant" to "Technique Research Assistant." TRRs serve
-   all security teams (intelligence, emulation, detection, response), not just
-   detection engineering.
-2. **Separated detection strategy from TRR workflow** — Removed Phase 5
-   (Detection Strategy) from the TRR production process. Detection Methods is
-   now documented as a post-TRR derivative document, alongside Lab Recreation
-   Guide and other team-specific outputs.
-3. **Rewrote Core Principle #4** — From "TRRs are lossless; detections are
-   lossy" (detection-centric framing) to "TRRs are source material; derivative
-   documents serve teams" (discipline-neutral framing).
-4. **Added conciseness guidance for TRR writing** — Technique Overview: 2-4
-   sentences. Scope Statement: concise list, not essay. Procedure narratives:
-   state what's unique, don't re-walk shared pipeline.
-5. **Added telemetry label convention** — Descriptive format required:
-   `Sysmon 11 (FileCreate)` not `Sysmon 11`.
-6. **Added DDM file naming convention** — `ddm_trr####_platform.json` for
-   master, `trr####_platform_letter.json/.png` for per-procedure exports.
-7. **Added repository structure** — Standard directory layout for TRR
-   deliverables.
-8. **Removed detection-oriented language from procedure writing guidance** —
-   "Call out key detection opportunities" and "Can a detection engineer build
-   detections from this?" replaced with discipline-neutral utility checks.
-9. **Added two new pitfalls** — #9 (Detection-Oriented TRR Prose) and #10
-   (Verbose Procedure Narratives) based on TRR0000 v7→v9 refinement.
-10. **Updated utility checks** — Now test whether any security team can use the
-    TRR, not just detection engineers.
+1. **Added per-procedure DDM export convention for shared vs. independent
+   pipelines** — Step 10 now distinguishes between procedures that share a
+   pipeline (full DDM in each export, active path red, inactive black) and
+   procedures with independent pipelines (isolated export containing only that
+   procedure's operations). Mixed cases documented.
+2. **Added Pitfall #11: Phase 1 Artifact Leakage** — Guidance for condensing
+   the exclusion table from exhaustive research to publication-ready (typically
+   3-5 rows). Drop rows obvious from metadata, consolidate tangential items,
+   enforce one-sentence scope statement. The row count is a guideline — if the
+   technique genuinely warrants more exclusions, include them.
+3. **Added Pitfall #12: Telemetry Enablement Guidance** — TRRs state what
+   telemetry exists (facts), not how to enable or deploy it (prescriptions).
+   No tables with "Default State" or "Enablement" columns in Technical
+   Background.
+4. **Strengthened scope statement rule** — Changed from "brief" to "one precise
+   sentence" throughout. If it takes more than one sentence, the scope isn't
+   tight enough.
+5. **Updated repository structure** — Added `images/` directory for
+   supplementary screenshots and diagrams, and `Supporting Docs/` for research
+   artifacts. Removed specific TRR number references.
+6. **Added telemetry enablement warning to Technical Background guidance** —
+   Step 3 and Step 11 both now explicitly state that telemetry facts go inline
+   in prose, never in enablement/deployment tables.
+7. **Condensed exclusion table guidance in Step 11** — The TRR writing section
+   now includes the typical row count, the drop/consolidate rules, and the
+   metadata-obvious filter.
 
 ---
 

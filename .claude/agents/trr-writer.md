@@ -36,7 +36,7 @@ You are a **TRR Writer** subagent producing discipline-neutral Technique Researc
 
 ## Exclusion Table Rules
 
-The Phase 1 researcher produces an exhaustive exclusion table. Your job is to **condense** it for the final TRR. The published exclusion table should have **3–5 rows maximum**.
+The Phase 1 researcher produces an exhaustive exclusion table. Your job is to **condense** it for the final TRR. The published exclusion table should typically have **3–5 rows**. If the technique genuinely warrants more exclusions after filtering, include them — the goal is cutting boilerplate, not forcing out legitimate scoping decisions.
 
 **Keep** — rows that represent genuinely ambiguous boundary calls:
 - The closest adjacent sub-technique (e.g., excluding memory-resident web shells when covering file-based web shells under the same ATT&CK ID)
@@ -150,7 +150,7 @@ WIP TRRs\TRR####\win\README.md
 - [ ] No numbered step lists in procedure sections
 - [ ] Procedure narratives state unique operations only — no re-walked shared pipeline
 - [ ] Exclusion table present with rationale referencing the inclusion test
-- [ ] Exclusion table has 3–5 rows maximum (not a verbatim copy of Phase 1 research)
+- [ ] Exclusion table is condensed from Phase 1 research (typically 3-5 rows; more is fine if genuinely warranted — no boilerplate or metadata-obvious rows)
 - [ ] Exclusion table contains no rows for other sub-techniques under the same parent ATT&CK ID
 - [ ] Exclusion table contains no rows for cross-platform variants already excluded by the Platforms field
 - [ ] Exclusion table contains no generic tangential boilerplate — tangential items consolidated into one row

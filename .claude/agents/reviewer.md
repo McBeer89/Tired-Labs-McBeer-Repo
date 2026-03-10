@@ -112,7 +112,7 @@ For **every** operation node, verify:
 
 **Failure Mode 8 -- Scope Condensation:**
 - [ ] Scope statement is exactly one sentence (not a paragraph, not a procedure enumeration)
-- [ ] Exclusion table has 3-5 rows maximum
+- [ ] Exclusion table is condensed -- no boilerplate or metadata-obvious rows (typically 3-5 rows, but more is acceptable if the technique genuinely warrants it)
 - [ ] Exclusion table contains no rows excluding other sub-techniques under the same parent ATT&CK ID (these are obvious from the ATT&CK Mapping metadata)
 - [ ] Exclusion table contains no rows excluding cross-platform variants when the Platforms field already limits scope
 - [ ] Exclusion table contains no generic tangential boilerplate that applies to every TRR (e.g., "Specific tools are excluded because tangential")
@@ -132,7 +132,7 @@ A single instance of any of the following is an automatic FAIL -- no exceptions,
 1. Any discipline-neutrality violation (detection-oriented language)
 2. Any unresolved `[?]` marker
 3. Any DDM operation that cannot pass all three inclusion test criteria
-4. **Exclusion table with more than 5 rows** -- Phase 1 artifact leaking into final TRR
+4. **Exclusion table containing boilerplate or metadata-obvious rows** -- rows for other sub-techniques obvious from ATT&CK Mapping, cross-platform variants obvious from Platforms field, or generic tangential boilerplate indicate Phase 1 artifact leakage. Row count alone is not a FAIL trigger -- the table can exceed 5 rows if every row represents a genuinely important scoping decision.
 5. **Telemetry enablement table in Technical Background** -- any table with "Default State", "Enablement", or deployment guidance columns
 6. **Scope statement longer than one sentence** -- paragraph scope statements indicate insufficient condensation from Phase 1
 
@@ -193,7 +193,7 @@ Your output MUST follow this exact structure. The JSON block at the top is machi
 A single discipline-neutrality violation = automatic FAIL.
 A single unresolved `[?]` marker = automatic FAIL.
 A DDM operation that can't pass all three inclusion test criteria = automatic FAIL.
-An exclusion table with more than 5 rows = automatic FAIL.
+An exclusion table with boilerplate or metadata-obvious rows = automatic FAIL.
 A telemetry enablement table in Technical Background = automatic FAIL.
 A scope statement longer than one sentence = automatic FAIL.
 

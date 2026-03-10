@@ -84,14 +84,14 @@ Technique Overview is exactly 2-4 sentences. What the technique is, how it works
 ### Failure Mode 8: Phase 1 Artifact Leakage into Final TRR
 The researcher produces exhaustive Phase 1 scoping documents -- that is correct behavior. The writer must **condense** these into publication-ready prose, not copy them verbatim. Symptoms of this failure:
 
-- Exclusion table with more than 5 rows (Phase 1 tables can have 10+; final TRR should have 3-5)
+- Exclusion table bloated with obvious or boilerplate rows (Phase 1 tables can have 10+; final TRR should typically have 3-5, though more is fine if genuinely warranted by the technique)
 - Rows excluding other sub-techniques under the same parent ATT&CK ID (obvious from metadata -- the reader can see the ATT&CK Mapping field)
 - Rows excluding cross-platform variants when the Platforms field already limits scope
 - Generic tangential boilerplate rows that apply to every TRR ("Specific tools are excluded because they are tangential")
 - Scope statement that is a paragraph instead of one sentence
 - Scope statement that enumerates procedures instead of defining boundaries
 
-**Principle:** Phase 1 should be exhaustive (capture everything). The final TRR should be concise (publish only what the reader needs that isn't already obvious from metadata). The writer's job is the transformation between these two states. If the final TRR reads like a Phase 1 artifact, the writer failed to condense.
+**Principle:** Phase 1 should be exhaustive (capture everything). The final TRR should be concise (publish only what the reader needs that isn't already obvious from metadata). The writer's job is the transformation between these two states. If the final TRR reads like a Phase 1 artifact, the writer failed to condense. But conciseness means cutting boilerplate, not forcing out legitimate scoping decisions -- if the technique genuinely has more than 5 important exclusions, include them.
 
 ### Failure Mode 9: Telemetry Enablement Guidance in TRR
 A TRR states what telemetry exists and what operation it observes -- these are **telemetry constraint facts** and they belong in the TRR. A TRR does NOT prescribe how to enable, deploy, or configure telemetry -- those are **deployment recommendations** and they belong in derivative documents (Detection Methods, Lab Recreation Guide, etc.).
@@ -199,7 +199,7 @@ Do not blindly trust subagent output. Before accepting any subagent return:
 2. Check DDM builder output against the inclusion test -- even the builder can slip tangential elements through.
 3. Check writer output for detection language -- the trr-writer has a self-review checklist, but catch anything it missed.
 4. If the reviewer returns FAIL, do not rationalize it away. Fix every critical issue. Re-run the reviewer after fixes.
-5. **Check writer output for scope condensation** -- if the exclusion table has more than 5 rows, send it back with instructions to condense. Verify: no sub-technique ID exclusions, no cross-platform exclusions already covered by the Platforms field, no generic tangential boilerplate, scope statement is one sentence. If any of these fail, the writer copied Phase 1 artifacts instead of condensing them.
+5. **Check writer output for scope condensation** -- verify the exclusion table doesn't contain sub-technique ID exclusions obvious from the ATT&CK Mapping field, cross-platform exclusions already covered by the Platforms field, or generic tangential boilerplate. Scope statement must be one sentence. If these bloat symptoms are present, the writer copied Phase 1 artifacts instead of condensing them -- send it back. (A well-condensed table is typically 3-5 rows, but more is acceptable if the technique genuinely warrants it.)
 6. **Check writer output for telemetry enablement tables** -- if Technical Background contains a table with "Default State" or "Enablement" columns, send it back with instructions to rewrite telemetry facts as inline prose. Telemetry constraint facts belong in the TRR; deployment recommendations do not.
 
 ---
