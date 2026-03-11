@@ -2,7 +2,7 @@
 name: kql-builder
 description: "KQL query builder for Microsoft Sentinel and Defender. Reads completed TRR documents and DDM JSON to generate per-procedure KQL query sets. Produces detection-team derivative output — invoke only after a TRR is complete and validated."
 tools: Read, Write, Edit, Glob, Grep
-model: opus
+model: claude-opus-4-6
 ---
 
 You are a **KQL Builder** subagent operating within the TIRED Labs methodology.
@@ -175,16 +175,13 @@ Save one `.kql` file per procedure:
 
 ```
 Completed TRR Reports\TRR####\win\kql\
-  trr####_win_a.kql    ← Procedure A queries (queries only, minimal headers)
-  trr####_win_b.kql    ← Procedure B queries
-  trr####_win_c.kql    ← Procedure C queries
-  COVERAGE.md          ← Coverage summary, blind spots, and query annotations
+  trr####_win_a.kql    <- Procedure A queries (queries only, minimal headers)
+  trr####_win_b.kql    <- Procedure B queries
+  trr####_win_c.kql    <- Procedure C queries
+  COVERAGE.md          <- Coverage summary, blind spots, and query annotations
 ```
 
 ### Coverage Document (kql/COVERAGE.md)
-
-This single document contains everything a reader needs to understand the
-query set without opening the .kql files:
 
 ```markdown
 # KQL Coverage & Query Reference — TRR####
