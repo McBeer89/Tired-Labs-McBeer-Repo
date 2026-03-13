@@ -1,4 +1,4 @@
-# Cyber Threat Intelligence Report: Ransomware Threat Assessment for Edward Jones
+# Cyber Threat Intelligence Report: Ransomware Threat Assessment for Contoso Financial
 
 **Report ID:** CTI-2026-0047  
 **Classification:** TLP:AMBER  
@@ -17,7 +17,7 @@
 5. Initial Access Vectors
 6. Post-Exploitation Tooling and Kill Chain
 7. Financial Sector Targeting Trends
-8. Recent Incidents Relevant to Edward Jones
+8. Recent Incidents Relevant to Contoso Financial
 9. MITRE ATT&CK Mapping
 10. Indicators of Compromise
 11. Regulatory and Compliance Considerations
@@ -29,7 +29,7 @@
 
 ## 1. Executive Summary
 
-Ransomware continues to be a significant and evolving threat to financial services organizations globally, including firms with a profile similar to Edward Jones. In 2025, the ransomware ecosystem experienced significant changes, including the fragmentation of major groups following law enforcement operations, the emergence of new threat actors, and a continued shift toward data exfiltration-based extortion models. This report provides a comprehensive overview of the current ransomware threat landscape as it pertains to the financial services sector and specifically to our organization's risk profile as a wealth management and brokerage firm with over 20,000 financial advisors, approximately 9 million clients, and operations across the United States and Canada. The purpose of this report is to ensure that all stakeholders across the organization have a thorough understanding of the threat environment and can make informed decisions about security investments, controls, and risk acceptance. The threat is assessed as HIGH based on our analysis.
+Ransomware continues to be a significant and evolving threat to financial services organizations globally, including firms with a profile similar to Contoso Financial. In 2025, the ransomware ecosystem experienced significant changes, including the fragmentation of major groups following law enforcement operations, the emergence of new threat actors, and a continued shift toward data exfiltration-based extortion models. This report provides a comprehensive overview of the current ransomware threat landscape as it pertains to the financial services sector and specifically to our organization's risk profile as a wealth management and brokerage firm with over 20,000 financial advisors, approximately 9 million clients, and operations across the United States and Canada. The purpose of this report is to ensure that all stakeholders across the organization have a thorough understanding of the threat environment and can make informed decisions about security investments, controls, and risk acceptance. The threat is assessed as HIGH based on our analysis.
 
 ---
 
@@ -118,7 +118,7 @@ Several significant events reshaped the ransomware ecosystem in 2025:
 
 **2025 Activity**: In Q1 2025, Clop exploited vulnerabilities in the Cleo managed file transfer platform (CVE-2024-50623 and CVE-2024-55956), publishing nearly 400 victims from this single campaign. The group subsequently pivoted to an Oracle E-Business Suite zero-day (CVE-2025-61882) targeting payroll, HR, and finance databases.
 
-**Relevance to Edward Jones**: Clop's supply-chain exploitation model creates risk for any organization that uses widely-deployed enterprise software platforms, particularly managed file transfer solutions and ERP systems. Even if Edward Jones is not directly vulnerable to Clop's currently-exploited platforms, the group's methodology could be applied to other software in our technology stack.
+**Relevance to Contoso Financial**: Clop's supply-chain exploitation model creates risk for any organization that uses widely-deployed enterprise software platforms, particularly managed file transfer solutions and ERP systems. Even if Contoso Financial is not directly vulnerable to Clop's currently-exploited platforms, the group's methodology could be applied to other software in our technology stack.
 
 ### 4.4 Medusa
 
@@ -304,15 +304,15 @@ The supply chain is an increasingly critical attack vector for financial service
 
 This pattern was clearly demonstrated in the Marquis Software Solutions attack (discussed in detail in Section 8), where the compromise of a single marketing and analytics vendor exposed data on over 1.4 million consumers across 74+ banking institutions. Similarly, the DBS/Toppan Next Tech incident involved a ransomware attack on a printing vendor that exposed brokerage customer data.
 
-For Edward Jones, this risk is particularly relevant given our reliance on numerous third-party vendors for functions including technology infrastructure, marketing, compliance, data analytics, printing, and various back-office operations.
+For Contoso Financial, this risk is particularly relevant given our reliance on numerous third-party vendors for functions including technology infrastructure, marketing, compliance, data analytics, printing, and various back-office operations.
 
 ---
 
-## 8. Recent Incidents Relevant to Edward Jones
+## 8. Recent Incidents Relevant to Contoso Financial
 
 ### 8.1 Marquis Software Solutions (August 2025)
 
-The Marquis Software Solutions attack is the most consequential financial sector supply-chain incident of 2025 and carries direct relevance to Edward Jones.
+The Marquis Software Solutions attack is the most consequential financial sector supply-chain incident of 2025 and carries direct relevance to Contoso Financial.
 
 **Background**: Marquis is a Texas-based vendor providing marketing, compliance, and data analytics services to over 700 banking institutions across the United States. The company's services involve handling sensitive customer data on behalf of its financial services clients.
 
@@ -320,7 +320,7 @@ The Marquis Software Solutions attack is the most consequential financial sector
 
 **Aftermath**: Marquis reportedly paid the ransom, but data still appeared on criminal marketplaces. A two-month gap between the breach and client notification (August to late October) has triggered multiple state Attorney General filings and class action investigations. The incident demonstrated that even when a vendor pays the ransom, there is no guarantee that stolen data will not be further distributed or sold.
 
-**Relevance**: Edward Jones utilizes numerous third-party vendors that handle client data. An attack on any of these vendors could result in a similar outcome, with our clients' data being exposed regardless of the strength of our own security controls.
+**Relevance**: Contoso Financial utilizes numerous third-party vendors that handle client data. An attack on any of these vendors could result in a similar outcome, with our clients' data being exposed regardless of the strength of our own security controls.
 
 ### 8.2 DBS Bank / Bank of China Singapore (April 2025)
 
@@ -328,13 +328,13 @@ The Marquis Software Solutions attack is the most consequential financial sector
 
 **Incident Details**: The attack exposed data on approximately 8,200 DBS customers, most of whom were users of DBS Vickers — the bank's brokerage arm. The exposed data included names, addresses, and equity holdings details. An additional 3,000 Bank of China Singapore customers were affected.
 
-**Relevance**: This incident is directly relevant to Edward Jones because it involved a brokerage operation and exposed the types of data that our firm holds — client names, addresses, and investment portfolio information. The attack vector was a printing vendor, a type of third party that many financial services firms would not consider a high-priority cybersecurity risk.
+**Relevance**: This incident is directly relevant to Contoso Financial because it involved a brokerage operation and exposed the types of data that our firm holds — client names, addresses, and investment portfolio information. The attack vector was a printing vendor, a type of third party that many financial services firms would not consider a high-priority cybersecurity risk.
 
 ### 8.3 Wealth Management and Investment Firm Targeting
 
 Several wealth management and investment firms appeared on ransomware leak sites in 2025:
 
-- **Tufton Capital Management** ($810M AUM, Hunt Valley, Maryland) — a registered investment advisor with a profile very similar to an Edward Jones branch office.
+- **Tufton Capital Management** ($810M AUM, Hunt Valley, Maryland) — a registered investment advisor with a profile very similar to an Contoso Financial branch office.
 - **FAS Wealth Partners** (Kansas City, Missouri) — a financial advisory firm.
 - **Hudson Executive Capital LP** (New York City) — an SEC-registered investment advisor.
 - **Duff Capital Investors** — an investment firm.
@@ -438,7 +438,7 @@ The Office of Foreign Assets Control (OFAC) maintains strict liability for payme
 
 97% of ransomware payments continue to be made in Bitcoin (FinCEN data), and the laundering of these funds is becoming increasingly difficult due to enhanced blockchain analysis capabilities and international sanctions enforcement. However, the reconstitution of sanctioned services under new names (e.g., Garantex → Grinex) demonstrates that the cryptocurrency laundering infrastructure remains resilient.
 
-For Edward Jones, any consideration of a ransom payment must include a thorough OFAC sanctions screening process, which adds complexity and time to an already time-pressured decision.
+For Contoso Financial, any consideration of a ransom payment must include a thorough OFAC sanctions screening process, which adds complexity and time to an already time-pressured decision.
 
 ### 11.3 CISA CIRCIA Rule
 
@@ -454,7 +454,7 @@ State regulators may impose additional requirements. Several states have enacted
 
 ## 12. Recommendations
 
-Based on the analysis presented in this report, the following recommendations are provided to reduce Edward Jones' exposure to the ransomware threats described:
+Based on the analysis presented in this report, the following recommendations are provided to reduce Contoso Financial' exposure to the ransomware threats described:
 
 ### 12.1 Perimeter Hardening
 - Ensure all internet-facing devices (VPN concentrators, firewalls, web application firewalls, load balancers) are patched against all known vulnerabilities, with priority given to the CVEs listed in Section 5.1.
@@ -489,7 +489,7 @@ Based on the analysis presented in this report, the following recommendations ar
 - Review the cybersecurity posture of all critical third-party vendors, with particular attention to those handling client PII and financial data.
 - Require third-party vendors to demonstrate adequate security controls, including patching programs, MFA, EDR, and incident response capabilities.
 - Consider implementing contractual requirements for prompt breach notification from vendors.
-- Monitor dark web forums and marketplaces for mentions of Edward Jones vendors.
+- Monitor dark web forums and marketplaces for mentions of Contoso Financial vendors.
 
 ### 12.7 Incident Response Preparedness
 - Update the ransomware incident response playbook to reflect the current threat landscape, including data extortion-only scenarios.
@@ -505,7 +505,7 @@ Based on the analysis presented in this report, the following recommendations ar
 
 ## 13. Conclusion
 
-The ransomware threat to Edward Jones is assessed as HIGH based on the analysis presented in this report. The financial services sector is the highest-value target for ransomware operators, and the specific characteristics of our organization — including our large client base, distributed branch network, extensive third-party vendor ecosystem, and the sensitivity of the client data we hold — make us a particularly attractive target.
+The ransomware threat to Contoso Financial is assessed as HIGH based on the analysis presented in this report. The financial services sector is the highest-value target for ransomware operators, and the specific characteristics of our organization — including our large client base, distributed branch network, extensive third-party vendor ecosystem, and the sensitivity of the client data we hold — make us a particularly attractive target.
 
 The most likely threat actors to target a firm with our profile in early 2026 are Qilin (which has demonstrated financial sector focus and is the highest-volume operator), Akira (which has consistent financial sector targeting and is the subject of a CISA advisory), and Medusa (which explicitly listed financial services in its CISA advisory and is known for aggressive triple extortion tactics). The risk of supply-chain compromise through a third-party vendor is also elevated based on the Marquis and DBS/Toppan incidents.
 
@@ -553,4 +553,4 @@ It is imperative that the organization continue to invest in the security contro
 
 *This report will be updated as new intelligence becomes available. For questions regarding this report, contact the Cyber Threat Intelligence team.*
 
-*© 2026 Edward Jones. Internal Use Only. Distribution restricted per TLP:AMBER guidelines.*
+*© 2026 Contoso Financial. Internal Use Only. Distribution restricted per TLP:AMBER guidelines.*

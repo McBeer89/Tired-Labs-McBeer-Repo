@@ -1,4 +1,4 @@
-# Ransomware Threat to Edward Jones: Q1 2026 Assessment
+# Ransomware Threat to Contoso Financial: Q1 2026 Assessment
 
 **Report ID:** CTI-2026-0047  
 **Classification:** TLP:AMBER  
@@ -12,7 +12,7 @@
 
 ## Key Takeaways
 
-Three ransomware groups pose the most credible threat to Edward Jones in Q1 2026: **Qilin**, **Akira**, and **Medusa**. All three actively target financial services firms with our profile — large client bases, sensitive PII, and extensive vendor ecosystems.
+Three ransomware groups pose the most credible threat to Contoso Financial in Q1 2026: **Qilin**, **Akira**, and **Medusa**. All three actively target financial services firms with our profile — large client bases, sensitive PII, and extensive vendor ecosystems.
 
 We assess with **moderate confidence** that the most likely attack scenario is **supply-chain compromise through a third-party vendor**, based on the pattern established by the Marquis Software Solutions breach (74+ banks impacted, August 2025) and the DBS Vickers incident (brokerage client data exposed via a printing vendor, April 2025). Direct compromise via an unpatched VPN or firewall appliance is the second most likely scenario.
 
@@ -30,7 +30,7 @@ We assess with **moderate confidence** that the most likely attack scenario is *
 
 Ransomware groups targeting financial services pursue **client PII, financial account data, and investment portfolio details**. The shift in 2025 is significant: data theft has overtaken encryption as the primary extortion lever. BlackFog reports exfiltration in 96% of ransomware incidents, and only 3% of exfiltration attempts are blocked (Vectra AI). Groups increasingly skip encryption entirely, relying on the threat of publishing stolen data.
 
-For Edward Jones specifically, the data at risk includes client names, SSNs, account numbers, equity holdings, and trading histories across approximately 9 million client accounts. This data carries premium value on criminal marketplaces regardless of whether a ransom is paid, and exposure would trigger SEC, FINRA, and state regulatory obligations simultaneously.
+For Contoso Financial specifically, the data at risk includes client names, SSNs, account numbers, equity holdings, and trading histories across approximately 9 million client accounts. This data carries premium value on criminal marketplaces regardless of whether a ransom is paid, and exposure would trigger SEC, FINRA, and state regulatory obligations simultaneously.
 
 One emerging tactic directly relevant to our profile: **Interlock ransomware has begun stealing victims' cyber insurance policies** to calibrate demands just below policy limits. This weaponizes financial data against financial firms.
 
@@ -80,9 +80,9 @@ These groups are highly capable and well-resourced. Relevant capabilities that a
 
 This is our highest-risk area. The Marquis Software Solutions breach (August 2025) compromised a single marketing/analytics vendor and exposed **1.4 million consumers across 74+ banks**. The DBS/Toppan incident exposed brokerage client data through a printing vendor. Both were vendor categories that most firms would not classify as high cybersecurity risk.
 
-Edward Jones relies on numerous third-party vendors for marketing, compliance analytics, printing, and back-office operations. **We have not validated whether our top vendors have patched the edge device CVEs being actively exploited, or whether they enforce MFA on remote access.** This gap represents our most significant exposure.
+Contoso Financial relies on numerous third-party vendors for marketing, compliance analytics, printing, and back-office operations. **We have not validated whether our top vendors have patched the edge device CVEs being actively exploited, or whether they enforce MFA on remote access.** This gap represents our most significant exposure.
 
-Several wealth management firms with profiles similar to Edward Jones branch offices appeared on leak sites in 2025, including Tufton Capital Management ($810M AUM, Maryland), FAS Wealth Partners (Kansas City), and Hudson Executive Capital (NYC).
+Several wealth management firms with profiles similar to Contoso Financial branch offices appeared on leak sites in 2025, including Tufton Capital Management ($810M AUM, Maryland), FAS Wealth Partners (Kansas City), and Hudson Executive Capital (NYC).
 
 ### Edge Device Attack Surface
 
@@ -94,7 +94,7 @@ The BYOVD technique that eight+ groups now share via EDRKillShifter represents a
 
 ### Credential Exposure
 
-The infostealer-to-broker pipeline operates continuously and independently of our perimeter defenses. Credentials stolen from employees' personal devices or browsers could provide valid access even with a fully patched perimeter. We do not currently have visibility into whether Edward Jones credentials appear in infostealer logs on dark web marketplaces.
+The infostealer-to-broker pipeline operates continuously and independently of our perimeter defenses. Credentials stolen from employees' personal devices or browsers could provide valid access even with a fully patched perimeter. We do not currently have visibility into whether Contoso Financial credentials appear in infostealer logs on dark web marketplaces.
 
 ---
 
@@ -108,7 +108,7 @@ Prioritized by urgency and impact. Items 1–3 should begin within 30 days.
 
 **3. Evaluate BYOVD detection capability — within 30 days.** Contact our EDR vendor to confirm whether current configurations detect vulnerable driver loading. If not, evaluate driver allowlisting or kernel-level load restrictions. *This addresses the dominant evasion technique across eight+ groups.*
 
-**4. Deploy dark web credential monitoring — within 60 days.** Engage a service to monitor for Edward Jones employee credentials in infostealer logs and IAB marketplaces. Establish a process to force password resets on exposed accounts. *This addresses the credential theft pipeline.*
+**4. Deploy dark web credential monitoring — within 60 days.** Engage a service to monitor for Contoso Financial employee credentials in infostealer logs and IAB marketplaces. Establish a process to force password resets on exposed accounts. *This addresses the credential theft pipeline.*
 
 **5. Conduct a ransomware tabletop exercise — within 90 days.** Scenario should include a data-extortion-only attack (no encryption) via a compromised vendor, requiring coordinated response across Legal, Compliance, Communications, and IR. Include OFAC screening procedures for any payment consideration. *This addresses the shift to data-theft-first extortion and regulatory complexity.*
 
@@ -120,9 +120,9 @@ Prioritized by urgency and impact. Items 1–3 should begin within 30 days.
 
 This assessment is based on open-source intelligence from vendor research (Check Point, Flashpoint, Mandiant M-Trends 2025, SOCRadar, Cyble, Darktrace), government advisories (CISA AA24-109A, AA25-071A), dark web monitoring feeds, and news reporting on financial sector incidents. The analyst reviewed 31 sources spanning the period April 2024 through March 2026.
 
-The overall confidence level is **moderate**. The assessment of supply-chain compromise as the most likely attack scenario is supported by multiple independent incidents (Marquis, DBS/Toppan, Betterment) but limited by the absence of direct targeting intelligence specific to Edward Jones. The threat actor prioritization is supported by CISA advisories and multiple vendor reports but could shift rapidly if a new group emerges or an existing group changes targeting patterns.
+The overall confidence level is **moderate**. The assessment of supply-chain compromise as the most likely attack scenario is supported by multiple independent incidents (Marquis, DBS/Toppan, Betterment) but limited by the absence of direct targeting intelligence specific to Contoso Financial. The threat actor prioritization is supported by CISA advisories and multiple vendor reports but could shift rapidly if a new group emerges or an existing group changes targeting patterns.
 
-Collection gaps include: no visibility into whether Edward Jones credentials currently appear in dark web markets, no confirmed intelligence on threat actor reconnaissance against our specific infrastructure, and limited insight into the security posture of our third-party vendors.
+Collection gaps include: no visibility into whether Contoso Financial credentials currently appear in dark web markets, no confirmed intelligence on threat actor reconnaissance against our specific infrastructure, and limited insight into the security posture of our third-party vendors.
 
 ---
 
