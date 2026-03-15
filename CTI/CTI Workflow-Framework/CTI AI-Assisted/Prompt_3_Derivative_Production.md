@@ -320,6 +320,40 @@ Compile and present complete draft.
 
 ### If Detection Engineering Brief:
 
+## Scope Boundary — What CTI Provides vs. What Detection Engineering Owns
+
+This is the most important rule for this derivative type. The CTI
+analyst tells the detection engineer WHAT to detect and WHY it's
+prioritized. The detection engineer decides HOW to detect it — they
+write the queries, set the thresholds, tune the false positives,
+and build the correlation rules. They know their SIEM environment
+better than the CTI analyst does.
+
+**CTI analyst provides (belongs in this brief):**
+- Priority ranking with rationale (which techniques, why this order)
+- The observable behavior in plain language
+- The telemetry source and event ID that observes it
+- Known indicators from the research base (driver names, tool names,
+  file paths, registry keys, account names, destinations)
+- Group-specific behavioral signatures that create high-fidelity
+  detection opportunities
+- Coverage map (what's covered, what's not, why)
+- Telemetry dependency checklist
+- Detection gaps requiring infrastructure or organizational action
+
+**Detection engineer owns (does NOT belong in this brief):**
+- Detection logic, KQL queries, or pseudo-query patterns
+- Threshold values and correlation windows
+- Tuning notes and false positive exclusion lists
+- Baselining methodology
+- Multi-condition correlation rule design
+- Alert severity classification
+
+If you find yourself writing anything that looks like a query, a
+threshold, a correlation window, or a tuning exclusion — stop. You
+are doing the detection engineer's job. Provide the what and why;
+let them build the how.
+
 Writing rules specific to this derivative type (in addition to
 the universal writing discipline above):
 
@@ -328,55 +362,109 @@ the universal writing discipline above):
   non-standard parent" — not "Mimikatz execution."
 - Every detection table must include the specific event ID with
   its descriptive name: "Sysmon 6 (DriverLoad)" not "Sysmon 6."
-- Tuning notes are mandatory for every detection. If a detection
-  is noisy, say so and say what to exclude. If it requires
-  baselining, say what normal looks like.
+- Include known indicators from the research base (specific driver
+  filenames, registry keys, account names, cloud destinations) as
+  reference data — but do not prescribe how to use them in a query.
+- Group-specific behavioral notes go in the detection table, not in
+  a separate section. Each technique entry should note which groups
+  use it and any group-specific quirk that creates a high-fidelity
+  detection opportunity.
 - Do not include strategic risk context, business framing, or
-  regulatory information. If it doesn't help the engineer write
-  a query, it doesn't belong.
+  regulatory information. If it doesn't help the engineer decide
+  what to build next, it doesn't belong.
 - Tables are the primary format. Narrative paragraphs should be
   minimal — use them only to explain why a priority tier is ranked
   where it is, then get into the table.
+- The brief should be short enough that the detection engineer can
+  read the whole thing in one sitting and walk away with a ranked
+  backlog. If it exceeds 4-5 pages, you are probably including
+  detection logic that belongs to the engineer.
+
+Detection table format — use this structure for every technique.
+STRICT LENGTH RULE: Each field gets ONE to TWO sentences maximum.
+If a field is running longer than two sentences, you are over-scoping.
+The entire table for one technique should fit in roughly 10-15 lines
+of text, not 30-40.
+
+| Field | Content | Max Length |
+|---|---|---|
+| Technique | ATT&CK ID and name | One line |
+| Priority | P1/P2/P3 with group count or prevalence | One line |
+| Observable Behavior | What happens on the system, in plain language. ONE sentence. | 1 sentence |
+| Telemetry Source | Event ID(s) with descriptive names. List format, no explanation. | 1-2 lines |
+| Known Indicators | Specific artifacts only: driver names, file paths, registry keys, account names, cloud destinations. NO CVE analysis, NO IR statistics, NO vulnerability context. Just the indicators. | 1-2 lines |
+| Group-Specific | Which group(s) and one behavioral quirk if applicable. Not an attack chain narrative. | 1 sentence |
+| Why This Priority | Why this ranking for this environment. | 1 sentence |
+
+ANTI-PATTERNS — do not do these:
+- Do NOT write multiple paragraphs in any table field
+- Do NOT include CVE descriptions, CVSS scores, or patch guidance
+  in detection tables — that's vulnerability management context
+- Do NOT narrate full attack chains in Group-Specific Notes —
+  state the quirk, not the story
+- Do NOT include implementation guidance, baselining advice, or
+  false positive predictions — that's the detection engineer's job
+- Do NOT flag research base gaps (GAP-R01, GAP-R03, etc.) inside
+  detection tables — put a single confidence note in the brief
+  header and move on. Per-field gap annotations clutter the table
+  and don't help the engineer build anything
+
+Example of a correctly scoped table entry:
+
+| Field | Content |
+|---|---|
+| Technique | T1112 — Modify Registry (WDigest) |
+| Priority | P2 — Qilin-attributed, high detection fidelity |
+| Observable Behavior | WDigest `UseLogonCredential` registry value set to `1`, forcing plaintext credential storage in LSASS. |
+| Telemetry Source | Sysmon 13 (RegistryEvent — Value Set), Windows 4657 (Registry Value Modified) |
+| Known Indicators | Registry key: `HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest`, value `UseLogonCredential` = `1` |
+| Group-Specific | Qilin affiliates modify this key before LSASS dumping (P1-2). |
+| Why This Priority | P2 — near-zero false positive rate (legitimate WDigest modification is rare), but source attribution unverified. |
 
 Draft in this order, pausing after each section:
 
-Section 1: Detection Priority Ranking (techniques ranked P1/P2/P3
-by prevalence across relevant threat groups)
+Section 1: Detection Priority Ranking — a summary table listing all
+techniques ranked P1/P2/P3 with one-line rationale per technique.
+This is the backlog overview. The engineer should be able to read
+this table and know the full scope of work.
 
 ---HARD STOP: "Is the priority ranking correct for your environment?
 Any technique that should move up or down based on your technology
 stack or existing coverage?" Wait for analyst review.---
 
-Section 2: Per-Technique Detection Tables (for each prioritized
-technique: what to detect, telemetry source with specific event IDs,
-operational notes)
-
-Draft P1 techniques first.
+Section 2: Per-Technique Detection Tables — one table per technique
+following the format above. Draft P1 techniques first.
 
 ---HARD STOP: "Review the P1 detection tables:
-- Are the telemetry sources correct for your environment?
-- Are the event IDs accurate?
-- Are the tuning notes realistic?
+- Are the observable behaviors correctly described?
+- Are the telemetry sources and event IDs accurate?
+- Are the known indicators current?
+- Are the group-specific notes accurate?
 - Anything missing?" Wait for analyst review.---
 
 Then P2, then P3, with hard stops after each priority tier.
 
-Section 3: Group-Specific Behavioral Indicators
-
----HARD STOP: "Are these behavioral patterns accurate based on
-your research? Any that are outdated?" Wait for analyst review.---
-
-Section 4: ATT&CK Coverage Map (what's covered, what's not, and why)
+Section 3: ATT&CK Coverage Map — what's covered by the detections
+above, what's partially covered, what's not covered, and why.
+Each gap should state whether it's closable (missing telemetry) or
+inherent (behavior indistinguishable from legitimate activity).
 
 ---HARD STOP: "Does this coverage map match your understanding of
 the detection landscape? Are the gap explanations accurate?" Wait
 for analyst review.---
 
-Section 5: Detection Gaps (techniques that can't be detected with
-current telemetry)
+Section 4: Detection Gaps — techniques that cannot be detected with
+available telemetry. Each gap should name what's missing and what
+would close it (infrastructure request, configuration change, new
+log source). These become requests from detection engineering to
+other teams.
 
-Section 6: Telemetry Dependency Checklist (every required log source
-with confirmation status)
+Section 5: Telemetry Dependency Checklist — every telemetry source
+the detections depend on, ordered by impact (sources supporting the
+most or most critical detections first). Each entry: source name,
+specific requirements (event types, audit policies), which detections
+it supports, impact if missing, and a confirmation status field for
+the detection engineer to complete.
 
 ---HARD STOP: "Review the telemetry dependencies. Which of these
 are confirmed active in your environment? Mark each as confirmed or
