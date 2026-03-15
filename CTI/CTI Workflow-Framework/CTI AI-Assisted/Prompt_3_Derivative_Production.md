@@ -131,6 +131,118 @@ EXCLUDED:
 
 ---HARD STOP: Wait for analyst to review every filtering decision.---
 
+## Writing Discipline (Applies to ALL Derivative Types)
+
+These rules govern how you draft every section of every derivative.
+They are based on Lenny Zeltser's writing principles for cybersecurity
+professionals and are non-negotiable.
+
+### Lead with the point, not the buildup.
+
+Every section opens with its conclusion, recommendation, or key
+finding — not with the context that led to it. The reader's attention
+is highest at the start. Do not make them read through supporting
+logic to reach your conclusion.
+
+This applies at every level: the opening of the derivative, the
+opening of each section, and the opening of each paragraph. If a
+paragraph's main point is in its last sentence, move it to the first
+sentence.
+
+### Pair every risk with its mitigation.
+
+Never raise a threat, gap, or vulnerability without stating what to
+do about it in the same section. A risk without a mitigation creates
+anxiety (general dread with no action path). A risk with a mitigation
+creates actionable urgency. If no mitigation exists, say so explicitly
+— "No mitigation is currently available; this is a monitored gap."
+
+### Cut relentlessly.
+
+Challenge every paragraph to be 20% shorter. If a word's absence
+doesn't change the meaning, remove it. If a sentence restates what
+the previous sentence said, remove it. If a section doesn't help the
+consumer make their specific decision, remove it.
+
+The test: would the consumer notice if this sentence were deleted?
+If no, delete it.
+
+### Match detail to the consumer.
+
+Technical detail belongs in technical derivatives. Business framing
+belongs in executive derivatives. Do not put event IDs in an
+executive brief. Do not put budget justification in a detection brief.
+If a detail is accurate but the consumer won't use it, it doesn't
+belong — even if it's interesting.
+
+Specifically:
+- Executive Brief: business language, dollar figures, timelines,
+  actions to assign. No tool names, event IDs, or ATT&CK IDs.
+- Detection Brief: event IDs, telemetry sources, tuning notes,
+  behavioral descriptions. No strategic risk framing or regulatory
+  context.
+- IR Brief: artifact locations, log sources, investigative questions,
+  containment steps. No detection logic or budget context.
+- Emulation Brief: procedure-level TTPs, tool alternatives, attack
+  sequencing. No strategic assessment or compliance context.
+
+### Use parallel structure.
+
+Every list, every series of headings, every set of recommendations
+must follow the same grammatical form. If your first recommendation
+starts with a verb ("Patch Fortinet"), every recommendation starts
+with a verb. If your first table column header is a noun, every
+column header is a noun. Inconsistent structure slows the reader.
+
+### One idea per paragraph. One action per recommendation.
+
+Do not combine multiple findings, risks, or actions into a single
+paragraph. Split them. Each paragraph gets one topic sentence at the
+front. Each recommendation gets one specific action. The consumer
+should be able to scan the topic sentences or recommendation headers
+and get the full picture without reading the body text.
+
+### No FUD. Let the facts carry urgency.
+
+If the threat is real, you don't need hyperbole. Do not use language
+designed to create general anxiety ("the threat landscape is more
+dangerous than ever," "organizations must act immediately or face
+catastrophic consequences"). State the specific risk, the specific
+evidence, and the specific mitigation. The facts are alarming enough.
+
+### Attribute everything.
+
+Every claim, statistic, and assessment must be traceable. "Researchers
+found" is not attribution. "Sophos 2025 Active Adversary Report" is
+attribution. The consumer should be able to judge the credibility of
+any claim by seeing where it came from — without asking.
+
+### Consolidate corroborating statistics.
+
+When multiple sources say the same thing (common in a well-sourced
+research base), do NOT cite each source as a separate data point in
+the derivative. Consolidate into one statement with combined
+attribution. Three sources all reporting declining payment rates
+becomes one sentence: "Payment rates hit record lows of 20–28%
+depending on methodology (Chainalysis 2026; Coveware Q4 2025;
+Coalition 2026)." The corroboration strengthens confidence — it does
+not require three paragraphs. If the consumer sees the same finding
+restated with different numbers from different sources, they will
+wonder which number is right rather than absorbing the conclusion.
+
+### Deliverables must be concrete, not plans to plan.
+
+When a section includes recommended actions, each action's deliverable
+must describe something that is done — not something that will be
+planned. "Implementation plan for X" is a plan to plan. "X deployed;
+scoping document for Y and Z with timeline and cost" gets one thing
+done and scopes the rest. If the action genuinely requires a planning
+phase first (e.g., network segmentation that can't be deployed in 30
+days), the deliverable should be the planning artifact with a specific
+completion date, not an open-ended commitment to plan.
+
+---
+
 ## Phase 4: Draft by Derivative Type
 
 Based on the confirmed filtered content, draft the derivative following
@@ -138,13 +250,46 @@ the content specification for the selected type.
 
 ### If Executive Threat Brief:
 
+Writing rules specific to this derivative type (in addition to
+the universal writing discipline above):
+
+- The CISO reads page one. If the priorities aren't on page one,
+  they won't be read. Structure the entire brief so page one is
+  self-contained.
+- Lead Section 1 with a numbered or bolded priority list, not a
+  narrative paragraph. Each priority gets a bold header, one
+  sentence of justification, and one sentence stating the action.
+- Do NOT include a narrative summary paragraph before, above, or
+  alongside the priority list. No "Ransomware groups are actively
+  targeting..." preamble. No introductory context. No scene-setting.
+  The priority list IS the opening. The brief goes from the section
+  heading directly to "Priority 1:". Any context the CISO needs is
+  embedded in the one-sentence justification under each priority.
+  This is the single most common drafting error — resist it.
+- Never name a tool, malware variant, event ID, or ATT&CK technique
+  by ID in the executive brief. Translate everything to business
+  impact and action. "CrowdStrike Falcon" becomes "our endpoint
+  security." "EDRKillShifter" becomes "a technique that disables
+  endpoint protection." "T1562.001" does not appear at all.
+- Every gap in Section 2 must end with what closing it would cost
+  or require — not just what the gap is. The CISO needs to decide
+  whether to fund the fix, not just learn the problem exists.
+- Every recommended action in Section 3 must name who should do it
+  and by when. "Patch Fortinet" is incomplete. "Direct infrastructure
+  team to emergency-patch all FortiGate appliances within 14 days"
+  is actionable.
+
 Draft in this order, pausing after each section:
 
-Section 1: Key Takeaways (2-4 sentences answering the consumer's
-question directly — what should leadership prioritize and why)
+Section 1: Key Takeaways — a priority list answering the consumer's
+question directly. Each priority gets a bold header, one sentence of
+justification from the research base, and one sentence stating the
+action or decision required. No narrative paragraphs. The consumer
+should be able to read only the bold headers and know what to do.
 
 ---HARD STOP: "Does this accurately capture the main message? Is the
-priority order correct? Would the CISO read this and know what to do?"
+priority order correct? Would the CISO read just the bold headers
+and know what to act on? Is every priority paired with an action?"
 Wait for analyst review.---
 
 Section 2: Priority Gaps (3-5 specific gaps in the organization's
@@ -174,6 +319,24 @@ Compile and present complete draft.
 ---
 
 ### If Detection Engineering Brief:
+
+Writing rules specific to this derivative type (in addition to
+the universal writing discipline above):
+
+- Lead every detection table entry with the observable behavior,
+  not the tool or threat group name. "LSASS process access from
+  non-standard parent" — not "Mimikatz execution."
+- Every detection table must include the specific event ID with
+  its descriptive name: "Sysmon 6 (DriverLoad)" not "Sysmon 6."
+- Tuning notes are mandatory for every detection. If a detection
+  is noisy, say so and say what to exclude. If it requires
+  baselining, say what normal looks like.
+- Do not include strategic risk context, business framing, or
+  regulatory information. If it doesn't help the engineer write
+  a query, it doesn't belong.
+- Tables are the primary format. Narrative paragraphs should be
+  minimal — use them only to explain why a priority tier is ranked
+  where it is, then get into the table.
 
 Draft in this order, pausing after each section:
 
@@ -225,6 +388,25 @@ Compile and present complete draft.
 
 ### If IR Preparedness Brief:
 
+Writing rules specific to this derivative type (in addition to
+the universal writing discipline above):
+
+- Organize everything by attack phase, not by topic or threat
+  group. The IR team encounters an incident phase by phase — the
+  brief should match their investigation flow.
+- Every artifact must include its specific location: the log source,
+  the event ID, the file path, or the registry key. "Check for
+  credential harvesting" is not actionable. "Sysmon 10 (ProcessAccess)
+  where TargetImage = lsass.exe" is actionable.
+- Each phase ends with one investigative question — the critical
+  unknown the IR team must resolve before moving on. This question
+  drives the investigation's structure.
+- The containment sequence must be numbered and ordered, not a
+  bulleted list of equal-weight actions. Order matters.
+- Do not include detection logic, strategic risk assessment, or
+  budget context. If it doesn't help the responder during an active
+  incident, it doesn't belong.
+
 Draft in this order, pausing after each section:
 
 Section 1: Kill Chain Summary (visual or structured overview with
@@ -267,6 +449,25 @@ Compile and present complete draft.
 ---
 
 ### If Red Team / Emulation Brief:
+
+Writing rules specific to this derivative type (in addition to
+the universal writing discipline above):
+
+- Write at procedure level, not technique level. "Credential access"
+  is a technique. "Mimikatz sekurlsa::logonpasswords against LSASS,
+  followed by Rubeus Kerberoasting targeting SPNs" is a procedure.
+  The red team needs to know exactly what to do, not what category
+  it falls into.
+- Every phase must include tool-to-technique mapping with emulation
+  alternatives the red team can substitute. The red team may not
+  have or want the exact tool — they need to produce the same
+  telemetry footprint.
+- Sequencing notes are critical. State what must happen before what
+  and why. "BYOVD occurs immediately before encryption, not during
+  initial foothold" changes the emulation design.
+- Do not include strategic risk assessment, regulatory context, or
+  detection tuning guidance. The red team needs the adversary's
+  operational playbook, not the organization's risk posture.
 
 Draft in this order, pausing after each section:
 
@@ -388,16 +589,41 @@ complete derivative:
 
 "Here is the complete [derivative type] draft.
 
-Before this goes to the consumer, final checks:
-- Read it from the consumer's perspective. Would they know what to do
-  after reading this?
-- Is the main point in the first paragraph, not buried?
-- Is it short enough that the consumer will actually read it?
+Before this goes to the consumer, final checks — content:
+- Does every claim trace back to the research base? Nothing should
+  appear in the derivative that isn't in the source layer.
 - Are confidence levels stated where assessments appear?
 - Is there anything in here that doesn't help the consumer make their
   specific decision? If so, cut it.
-- Does every claim trace back to the research base? Nothing should
-  appear in the derivative that isn't in the source layer.
+
+Writing quality checks:
+- Is the main point in the first paragraph, not buried? Would the
+  consumer know what to do after reading only the first section?
+- Is every risk paired with a mitigation or action? If any risk is
+  raised without a next step, add one or flag it as a monitored gap.
+- Is every paragraph focused on one idea? Are there any paragraphs
+  that combine multiple findings or actions that should be split?
+- Is there any FUD — language designed to create general anxiety
+  rather than specific, actionable urgency? If so, rewrite to state
+  the specific risk and its specific mitigation.
+- Are there unnecessary words? Challenge every section to be 20%
+  shorter. If it still says the same thing after cutting, the cut
+  stays.
+- Does every list and series of headings use parallel structure?
+- Is the detail level matched to the consumer? Flag any technical
+  detail in an executive brief, any strategic framing in a detection
+  brief, or any other mismatched content.
+- Is every statistic and claim attributed to a specific source?
+  "Researchers found" is not attribution.
+
+Length check:
+- This derivative is [X] words. The research base is [Y] words.
+  A derivative should be substantially shorter. If it's approaching
+  the research base length, identify what to cut.
+
+Read it from the consumer's perspective one more time. Would they
+know what to do? Would they read the whole thing, or would they
+stop at page two?
 
 This derivative should go through senior analyst review before
 distribution to the consumer."
@@ -419,6 +645,14 @@ distribution to the consumer."
 - Every section must pass the inclusion test. If you can't articulate
   why a section helps the consumer make their decision, don't include
   it.
+- Apply the Writing Discipline rules to every section of every
+  derivative without exception. Lead with the point. Pair risks with
+  mitigations. Cut relentlessly. Match detail to consumer. Use
+  parallel structure. One idea per paragraph. No FUD. Attribute
+  everything. Consolidate corroborating statistics. Make deliverables
+  concrete. These are not style preferences — they are quality
+  standards that determine whether the consumer reads the brief or
+  ignores it.
 - Use the consumer's language. An executive brief uses business
   language. A detection brief uses technical language with specific
   event IDs. An IR brief uses forensic language with artifact
@@ -426,6 +660,11 @@ distribution to the consumer."
 - Include a header on every derivative: Derived From (research base
   ID), Date, Consumer, Question Answered, Classification.
 - End every derivative with a contact line for the CTI team.
+
+Writing discipline rules in this prompt are based on Lenny Zeltser's
+cybersecurity writing principles (SANS SEC402: Cybersecurity Writing:
+Hack the Reader). Core principle: present your ideas on your reader's
+terms.
 ```
 
 ## Usage Notes
